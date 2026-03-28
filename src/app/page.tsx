@@ -32,7 +32,7 @@ export default function HomePage() {
 
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center">
-        <h1 className="text-5xl sm:text-7xl font-bold tracking-tight text-white leading-none mb-6">
+        <h1 className="font-display text-6xl sm:text-8xl font-semibold tracking-tight text-white leading-none mb-6">
           Your AI stylist
           <br />
           <span className="text-white/40">for every occasion.</span>
