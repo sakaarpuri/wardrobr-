@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, MessageSquare, Camera, Shirt } from 'lucide-react'
+// MessageSquare, Camera, Shirt used in HOW_IT_WORKS data
 
 const EXAMPLE_BOARDS = [
   {
@@ -61,41 +62,27 @@ export default function HomePage() {
           outfit from real UK stores in under a minute.
         </p>
 
-        {/* Three input modes */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-16">
-          <Link
-            href="/style"
-            className="flex items-center justify-center gap-2 bg-white text-black font-semibold px-6 py-3 rounded-xl hover:bg-white/90 transition-colors"
-          >
-            <MessageSquare className="w-4 h-4" />
-            Chat your style
-          </Link>
-          <Link
-            href="/style"
-            className="flex items-center justify-center gap-2 border border-white/15 text-white font-medium px-6 py-3 rounded-xl hover:border-white/30 hover:bg-white/5 transition-colors"
-          >
-            <Camera className="w-4 h-4" />
-            Upload a photo
-          </Link>
-          <Link
-            href="/style"
-            className="flex items-center justify-center gap-2 border border-white/15 text-white font-medium px-6 py-3 rounded-xl hover:border-white/30 hover:bg-white/5 transition-colors"
-          >
-            <Shirt className="w-4 h-4" />
-            Live inspiration
-          </Link>
-        </div>
+        <Link
+          href="/style"
+          className="flex items-center justify-center gap-2 bg-white text-black font-semibold px-6 py-3 rounded-xl hover:bg-white/90 transition-colors mb-16"
+        >
+          Start styling →
+        </Link>
 
-        {/* How it works — three ways to use */}
+        {/* Three ways to use — each card is a CTA */}
         <div className="w-full max-w-3xl grid sm:grid-cols-3 gap-4 text-left">
           {HOW_IT_WORKS.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="bg-zinc-900/60 border border-white/5 rounded-2xl p-5 space-y-3">
-              <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+            <Link
+              key={title}
+              href="/style"
+              className="group bg-zinc-900/60 border border-white/5 hover:border-white/15 hover:bg-zinc-900 rounded-2xl p-5 space-y-3 transition-all"
+            >
+              <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 transition-colors">
                 <Icon className="w-4 h-4 text-white/70" />
               </div>
               <p className="text-white text-sm font-semibold leading-snug">{title}</p>
               <p className="text-white/45 text-xs leading-relaxed">{body}</p>
-            </div>
+            </Link>
           ))}
         </div>
       </main>
