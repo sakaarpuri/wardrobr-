@@ -126,14 +126,13 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
     }
   }
 
+  // Always prefer more columns — smaller, gallery-style cards
   const gridCols =
-    board.products.length <= 2
-      ? 'grid-cols-2'
-      : board.products.length === 3
+    board.products.length <= 3
       ? 'grid-cols-3'
       : board.products.length === 4
-      ? 'grid-cols-2 sm:grid-cols-4'
-      : 'grid-cols-2 sm:grid-cols-3'
+      ? 'grid-cols-4'
+      : 'grid-cols-3'
 
   return (
     <>
@@ -216,7 +215,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
         )}
 
         {/* Product Grid */}
-        <div className={`grid ${gridCols} gap-3`}>
+        <div className={`grid ${gridCols} gap-2`}>
           {board.products.map((product, i) => (
             <motion.div
               key={product.id}

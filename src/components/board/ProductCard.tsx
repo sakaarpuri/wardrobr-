@@ -71,36 +71,27 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
       </div>
 
       {/* Product Info */}
-      <div className="p-3 space-y-2">
+      <div className="p-2 space-y-1.5">
         <div>
-          <p className="text-white/50 text-xs uppercase tracking-wider font-medium">
+          <p className="text-white/40 text-[10px] uppercase tracking-wider font-medium leading-none">
             {product.brand}
           </p>
-          <p className="text-white text-sm font-medium leading-tight mt-0.5 line-clamp-2">
+          <p className="text-white text-xs font-medium leading-tight mt-0.5 line-clamp-2">
             {product.name}
           </p>
         </div>
 
-        {product.aiExplanation && (
-          <p className="text-white/40 text-xs leading-relaxed line-clamp-2">
-            {product.aiExplanation}
-          </p>
-        )}
-
-        <div className="flex items-center justify-between pt-1">
-          <div>
-            <p className="text-white font-semibold text-sm">{formattedPrice}</p>
-            <p className="text-white/30 text-xs">{product.storeName}</p>
-          </div>
+        <div className="flex items-center justify-between">
+          <p className="text-white font-semibold text-xs">{formattedPrice}</p>
           <a
             href={product.affiliateUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 bg-white text-black text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-white/90 transition-colors"
+            className="flex items-center gap-1 bg-white text-black text-[10px] font-semibold px-2 py-1 rounded-md hover:bg-white/90 transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
             Shop
-            <ExternalLink className="w-3 h-3" />
+            <ExternalLink className="w-2.5 h-2.5" />
           </a>
         </div>
       </div>
