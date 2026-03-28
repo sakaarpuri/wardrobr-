@@ -100,21 +100,24 @@ export function ChatInterface() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ scrollbarWidth: 'thin' }}>
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-end h-full text-center gap-3 pb-4">
-            <p className="text-white/20 text-sm max-w-xs">
-              What&apos;s the occasion? Tell me the dress code, your budget, and when it is — I&apos;ll build the complete outfit.
-            </p>
-            <div className="flex flex-wrap gap-2 justify-center">
+          <div className="flex flex-col items-center justify-center h-full text-center gap-6 px-4">
+            <div className="space-y-2">
+              <p className="text-white/70 text-base font-medium">What are you dressing for?</p>
+              <p className="text-white/35 text-sm max-w-xs leading-relaxed">
+                Tell me the occasion, your budget, and when it is. I&apos;ll build the complete shoppable outfit.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-center max-w-sm">
               {[
-                'Summer wedding guest look',
-                'New job, first week capsule',
-                'Holiday capsule wardrobe',
-                'Post-breakup wardrobe refresh',
+                'Summer wedding guest',
+                'New job, first week',
+                'Holiday capsule',
+                'Post-breakup refresh',
               ].map((suggestion) => (
                 <button
                   key={suggestion}
                   onClick={() => handleSend(suggestion)}
-                  className="text-xs text-white/40 border border-white/10 rounded-full px-3 py-1.5 hover:border-white/30 hover:text-white/70 transition-colors"
+                  className="text-xs text-white/55 border border-white/15 rounded-full px-4 py-2 hover:border-white/35 hover:text-white/80 hover:bg-white/5 transition-all"
                 >
                   {suggestion}
                 </button>
