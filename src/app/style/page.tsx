@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { ChatInterface } from '@/components/chat/ChatInterface'
+import { VoiceStyler } from '@/components/voice/VoiceStyler'
 import { useChatStore } from '@/store/chatStore'
 import { Trash2 } from 'lucide-react'
 
@@ -30,6 +31,9 @@ export default function StylePage() {
       <div className="flex-1 overflow-hidden">
         <ChatInterface />
       </div>
+
+      {/* Floating voice stylist button */}
+      <VoiceStyler />
     </div>
   )
 }

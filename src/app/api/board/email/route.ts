@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import sgMail from '@sendgrid/mail'
 import { Product } from '@/lib/types'
 
 function buildEmailHtml(title: string, occasion: string | undefined, products: Product[]): string {
@@ -75,27 +75,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
     }
 
-    const apiKey = process.env.RESEND_API_KEY
+    const apiKey = process.env.SENDGRID_API_KEY
     if (!apiKey) {
       // Soft failure in development — log but don't error
-      console.log('[email] RESEND_API_KEY not set — email not sent to', email)
+      console.log('[email] SENDGRID_API_KEY not set — email not sent to', email)
       return NextResponse.json({ success: true, dev: true })
     }
 
-    const resend = new Resend(apiKey)
-    const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'Wardrobr.ai <hi@wardrobr.ai>'
+    sgMail.setApiKey(apiKey)
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL ?? 'hi@wardrobr.ai'
 
-    const { error } = await resend.emails.send({
-      from: fromEmail,
-      to: [email],
+    await sgMail.send({
+      from: { email: fromEmail, name: 'Wardrobr.ai' },
+      to: email,
       subject: `Your look: ${title}`,
       html: buildEmailHtml(title, occasion, products),
     })
-
-    if (error) {
-      console.error('Resend error:', error)
-      return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
-    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Part } from '@google/generative-ai'
 import { getGeminiModel, analyseStyleFromImage } from '@/lib/gemini'
 import { searchProducts, rewriteAffiliateUrl } from '@/lib/affiliate'
+import { routeRequest } from '@/lib/gemini-router'
 import { Product, OutfitBoard } from '@/lib/types'
 import crypto from 'crypto'
 
@@ -46,6 +47,13 @@ export async function POST(req: NextRequest) {
     // Request-scoped product cache — never shared across requests
     const productCache = new Map<string, Product>()
 
+    // Pre-classify with Flash-Lite to extract image metadata and intent cheaply
+    const route = await routeRequest({
+      userInput: message,
+      imageBase64: imageBase64 ?? undefined,
+      imageMimeType: imageMimeType ?? undefined,
+    })
+
     const model = getGeminiModel()
     const chat = model.startChat({ history: safeHistory })
 
@@ -54,8 +62,10 @@ export async function POST(req: NextRequest) {
     if (imageBase64) {
       messageParts.push(analyseStyleFromImage(imageBase64, imageMimeType ?? 'image/jpeg') as Part)
     }
-    if (message) {
-      messageParts.push({ text: message })
+    // Inject the Flash-Lite pre-classification as context so Flash doesn't re-derive it
+    const textWithContext = [route.imageContextHint, message].filter(Boolean).join('\n')
+    if (textWithContext) {
+      messageParts.push({ text: textWithContext })
     }
 
     // Agentic loop: send message, handle function calls, repeat
