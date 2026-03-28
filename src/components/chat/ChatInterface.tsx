@@ -132,7 +132,8 @@ export function ChatInterface() {
               messages: state.messages.filter((m) => m.id !== loadingMsg.id && m.id !== sid),
             }))
             productStreamId = null
-            if (event.text) addMessage({ type: 'ai_text', content: event.text })
+            // Only show text response when there's no board — the board speaks for itself
+            if (event.text && !event.outfitBoard) addMessage({ type: 'ai_text', content: event.text })
             if (event.outfitBoard) {
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
               setCurrentBoard(event.outfitBoard)
@@ -257,7 +258,11 @@ export function ChatInterface() {
       </div>
 
       <div className="px-4 pb-4 pt-2 border-t border-white/5">
-        <ChatInput onSend={handleSend} isLoading={isLoading} />
+        <ChatInput
+          onSend={handleSend}
+          isLoading={isLoading}
+          placeholder={messages.length > 0 ? 'Something else? Change the budget, occasion, or vibe…' : undefined}
+        />
       </div>
     </div>
   )
