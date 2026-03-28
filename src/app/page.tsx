@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Upload, MessageSquare } from 'lucide-react'
+import { ArrowRight, MessageSquare, Camera, Shirt } from 'lucide-react'
 
 const EXAMPLE_BOARDS = [
   {
@@ -13,6 +13,24 @@ const EXAMPLE_BOARDS = [
   {
     title: 'Holiday Capsule Wardrobe',
     items: ['Linen Shirt Dress · Zara · £39', 'Tailored Shorts · H&M · £24', 'Strappy Sandals · Office · £65', 'Canvas Tote · ASOS · £22'],
+  },
+]
+
+const HOW_IT_WORKS = [
+  {
+    icon: MessageSquare,
+    title: 'Chat your occasion',
+    body: 'Tell me the event, budget, and vibe. "Summer wedding, £200, smart but not stuffy." I\'ll handle the rest.',
+  },
+  {
+    icon: Camera,
+    title: 'Show a photo',
+    body: 'Upload a screenshot, mood board, or outfit you love. I\'ll read the look and build a shoppable version of it.',
+  },
+  {
+    icon: Shirt,
+    title: 'Browse live inspiration',
+    body: 'Point your camera at clothes in your wardrobe or a shop window. I\'ll style them into a complete outfit instantly.',
   },
 ]
 
@@ -39,25 +57,46 @@ export default function HomePage() {
         </h1>
 
         <p className="text-white/50 text-lg max-w-md leading-relaxed mb-10">
-          Tell me the occasion, your budget, and when it is. I'll build a complete, shoppable
+          Tell me the occasion, your budget, and when it is. I&apos;ll build a complete, shoppable
           outfit from real UK stores in under a minute.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* Three input modes */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-16">
           <Link
             href="/style"
             className="flex items-center justify-center gap-2 bg-white text-black font-semibold px-6 py-3 rounded-xl hover:bg-white/90 transition-colors"
           >
-            <Upload className="w-4 h-4" />
-            Upload a look
+            <MessageSquare className="w-4 h-4" />
+            Chat your style
           </Link>
           <Link
             href="/style"
             className="flex items-center justify-center gap-2 border border-white/15 text-white font-medium px-6 py-3 rounded-xl hover:border-white/30 hover:bg-white/5 transition-colors"
           >
-            <MessageSquare className="w-4 h-4" />
-            Describe your style
+            <Camera className="w-4 h-4" />
+            Upload a photo
           </Link>
+          <Link
+            href="/style"
+            className="flex items-center justify-center gap-2 border border-white/15 text-white font-medium px-6 py-3 rounded-xl hover:border-white/30 hover:bg-white/5 transition-colors"
+          >
+            <Shirt className="w-4 h-4" />
+            Live inspiration
+          </Link>
+        </div>
+
+        {/* How it works — three ways to use */}
+        <div className="w-full max-w-3xl grid sm:grid-cols-3 gap-4 text-left">
+          {HOW_IT_WORKS.map(({ icon: Icon, title, body }) => (
+            <div key={title} className="bg-zinc-900/60 border border-white/5 rounded-2xl p-5 space-y-3">
+              <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <Icon className="w-4 h-4 text-white/70" />
+              </div>
+              <p className="text-white text-sm font-semibold leading-snug">{title}</p>
+              <p className="text-white/45 text-xs leading-relaxed">{body}</p>
+            </div>
+          ))}
         </div>
       </main>
 
