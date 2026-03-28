@@ -24,7 +24,7 @@ export default function HomePage() {
         <span className="text-white font-semibold tracking-tight">Wardrobr.ai</span>
         <Link
           href="/style"
-          className="text-white/50 text-sm hover:text-white transition-colors"
+          className="text-white/50 text-sm hover:text-white transition-colors py-2 px-1"
         >
           Start styling →
         </Link>
