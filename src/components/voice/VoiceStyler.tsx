@@ -153,14 +153,6 @@ export function VoiceStyler() {
 
             if (event.text) {
               addMessage({ type: 'ai_text', content: event.text })
-              // Speak the AI response via browser TTS (first ~300 chars)
-              if (typeof window !== 'undefined' && window.speechSynthesis && event.text) {
-                window.speechSynthesis.cancel()
-                const utt = new SpeechSynthesisUtterance(event.text.slice(0, 300))
-                utt.rate = 1.1
-                utt.lang = 'en-GB'
-                window.speechSynthesis.speak(utt)
-              }
             }
             if (event.outfitBoard) {
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
@@ -244,7 +236,6 @@ export function VoiceStyler() {
   }, [runStyleRequest])
 
   const cancel = useCallback(() => {
-    if (typeof window !== 'undefined') window.speechSynthesis?.cancel()
     stopListening()
     setVoiceState('idle')
     setTranscript('')
