@@ -113,7 +113,7 @@ function HomepageInput() {
   return (
     <div className="w-full max-w-xl">
       {/* Main input */}
-      <div className="flex items-end gap-2 bg-zinc-900/80 backdrop-blur border border-white/10 rounded-2xl px-4 py-3 focus-within:border-white/20 transition-colors">
+      <div className="flex items-end gap-2 bg-[#130F0C]/90 backdrop-blur border border-white/10 rounded-2xl px-4 py-3 focus-within:border-[#E8A94A]/40 transition-colors">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -145,7 +145,7 @@ function HomepageInput() {
             onClick={handleSend}
             disabled={!text.trim()}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-              text.trim() ? 'bg-white text-black hover:bg-white/90' : 'text-white/20 cursor-not-allowed'
+              text.trim() ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]' : 'text-white/20 cursor-not-allowed'
             }`}
           >
             <Send className="w-3.5 h-3.5" />
@@ -159,7 +159,7 @@ function HomepageInput() {
           <button
             key={p}
             onClick={() => submit(p)}
-            className="text-xs text-white/40 border border-white/10 rounded-full px-3.5 py-1.5 hover:border-white/25 hover:text-white/65 hover:bg-white/5 transition-all"
+            className="text-xs text-white/45 border border-white/10 rounded-full px-3.5 py-1.5 hover:border-[#E8A94A]/50 hover:text-[#E8A94A] hover:bg-[#E8A94A]/5 transition-all"
           >
             {p}
           </button>
@@ -267,17 +267,17 @@ export default function HomePage() {
         </div>
 
         {/* Three mode cards */}
-        <div className="relative z-10 w-full max-w-3xl grid sm:grid-cols-3 gap-px bg-white/5 rounded-2xl overflow-hidden border border-white/5">
+        <div className="relative z-10 w-full max-w-3xl grid sm:grid-cols-3 gap-px bg-[#E8A94A]/8 rounded-2xl overflow-hidden border border-[#E8A94A]/10">
           {HOW_IT_WORKS.map(({ icon: Icon, label, title, body }) => (
             <Link
               key={title}
               href="/style"
-              className="group bg-zinc-950 hover:bg-zinc-900 p-6 space-y-4 transition-colors"
+              className="group bg-[#100D0A] hover:bg-[#18120E] p-6 space-y-4 transition-colors"
             >
               <div className="flex items-center justify-between">
-                <span className="font-display italic text-white/20 text-3xl leading-none">{label}</span>
-                <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/8 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                  <Icon className="w-3.5 h-3.5 text-white/50" />
+                <span className="font-display italic text-[#E8A94A]/50 text-3xl leading-none group-hover:text-[#E8A94A]/80 transition-colors">{label}</span>
+                <div className="w-8 h-8 rounded-lg bg-[#E8A94A]/8 border border-[#E8A94A]/15 flex items-center justify-center group-hover:bg-[#E8A94A]/15 transition-colors">
+                  <Icon className="w-3.5 h-3.5 text-[#E8A94A]/70" />
                 </div>
               </div>
               <div>
@@ -302,7 +302,7 @@ export default function HomePage() {
             <button
               key={board.title}
               onClick={() => handleBoardClick(board.title)}
-              className="group bg-zinc-900/50 border border-white/5 hover:border-white/12 rounded-2xl p-5 transition-all text-left w-full"
+              className="group bg-[#110D0A]/80 border border-white/5 hover:border-[#E8A94A]/25 rounded-2xl p-5 transition-all text-left w-full"
             >
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-white text-sm font-semibold">{board.title}</h3>

@@ -77,7 +77,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
       )}
 
       {/* Input bar */}
-      <div className="flex items-end gap-2 bg-zinc-900 border border-white/10 rounded-2xl px-3 py-2.5">
+      <div className="flex items-end gap-2 bg-[#130F0C] border border-white/10 rounded-2xl px-3 py-2.5 focus-within:border-[#E8A94A]/30 transition-colors">
         <button
           onClick={() => setShowImageUpload(!showImageUpload)}
           title="Upload a photo of a look to style"
@@ -107,7 +107,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
             flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all
             ${isLoading || (!text.trim() && !imageBase64)
               ? 'text-white/20 cursor-not-allowed'
-              : 'bg-white text-black hover:bg-white/90'
+              : 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]'
             }
           `}
         >

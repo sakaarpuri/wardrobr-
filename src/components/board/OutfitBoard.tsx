@@ -156,7 +156,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
             {/* Open all shop links at once */}
             <button
               onClick={() => board.products.forEach(p => window.open(p.affiliateUrl || p.productUrl, '_blank'))}
-              className="flex items-center gap-1.5 text-white/40 hover:text-white text-xs transition-colors px-2 py-1 rounded-lg hover:bg-white/5"
+              className="flex items-center gap-1.5 text-[#E8A94A]/70 hover:text-[#E8A94A] text-xs transition-colors px-2 py-1 rounded-lg hover:bg-[#E8A94A]/8 border border-[#E8A94A]/20 hover:border-[#E8A94A]/40"
               title="Open all shop pages"
             >
               <ShoppingBag className="w-3.5 h-3.5" />

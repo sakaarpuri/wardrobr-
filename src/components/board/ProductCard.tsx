@@ -87,7 +87,7 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
             href={product.affiliateUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 bg-white text-black text-[10px] font-semibold px-2 py-1 rounded-md hover:bg-white/90 transition-colors"
+            className="flex items-center gap-1 bg-[#E8A94A] text-[#1A0E00] text-[10px] font-semibold px-2 py-1 rounded-md hover:bg-[#f0b85a] transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
             Shop

@@ -179,8 +179,8 @@ export function ChatInterface() {
                       onClick={() => setUserProfile({ gender: userProfile.gender === g.toLowerCase() as 'women' | 'men' ? null : g.toLowerCase() as 'women' | 'men' })}
                       className={`text-xs px-3.5 py-1.5 rounded-full border transition-all ${
                         userProfile.gender === g.toLowerCase()
-                          ? 'border-white/40 text-white bg-white/10'
-                          : 'border-white/12 text-white/45 hover:border-white/25 hover:text-white/65'
+                          ? 'border-[#E8A94A]/60 text-[#E8A94A] bg-[#E8A94A]/10'
+                          : 'border-white/12 text-white/45 hover:border-[#E8A94A]/35 hover:text-white/65'
                       }`}
                     >
                       {g}
@@ -199,8 +199,8 @@ export function ChatInterface() {
                       onClick={() => setUserProfile({ size: userProfile.size === s ? null : s })}
                       className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
                         userProfile.size === s
-                          ? 'border-white/40 text-white bg-white/10'
-                          : 'border-white/12 text-white/45 hover:border-white/25 hover:text-white/65'
+                          ? 'border-[#E8A94A]/60 text-[#E8A94A] bg-[#E8A94A]/10'
+                          : 'border-white/12 text-white/45 hover:border-[#E8A94A]/35 hover:text-white/65'
                       }`}
                     >
                       {s}
@@ -219,8 +219,8 @@ export function ChatInterface() {
                       onClick={() => setUserProfile({ budget: userProfile.budget === b ? null : b })}
                       className={`text-xs px-3.5 py-1.5 rounded-full border transition-all ${
                         userProfile.budget === b
-                          ? 'border-white/40 text-white bg-white/10'
-                          : 'border-white/12 text-white/45 hover:border-white/25 hover:text-white/65'
+                          ? 'border-[#E8A94A]/60 text-[#E8A94A] bg-[#E8A94A]/10'
+                          : 'border-white/12 text-white/45 hover:border-[#E8A94A]/35 hover:text-white/65'
                       }`}
                     >
                       {b}
