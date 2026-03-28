@@ -1,7 +1,31 @@
 'use client'
 
+import { useState } from 'react'
 import { Product } from '@/lib/types'
 import { ExternalLink, RefreshCw } from 'lucide-react'
+
+const CATEGORY_STYLES: Record<string, { gradient: string; label: string }> = {
+  tops:        { gradient: 'from-stone-800 to-stone-700',   label: 'Top' },
+  bottoms:     { gradient: 'from-slate-800 to-slate-700',   label: 'Bottoms' },
+  dresses:     { gradient: 'from-rose-950 to-rose-900',     label: 'Dress' },
+  outerwear:   { gradient: 'from-zinc-800 to-zinc-700',     label: 'Outerwear' },
+  shoes:       { gradient: 'from-amber-950 to-amber-900',   label: 'Shoes' },
+  footwear:    { gradient: 'from-amber-950 to-amber-900',   label: 'Shoes' },
+  bags:        { gradient: 'from-neutral-800 to-neutral-700', label: 'Bag' },
+  accessories: { gradient: 'from-indigo-950 to-indigo-900', label: 'Accessory' },
+}
+
+function ImagePlaceholder({ category }: { category: string }) {
+  const style = CATEGORY_STYLES[category.toLowerCase()] ?? { gradient: 'from-zinc-800 to-zinc-700', label: category }
+  return (
+    <div className={`w-full h-full bg-gradient-to-b ${style.gradient} flex flex-col items-center justify-center gap-2`}>
+      <div className="w-10 h-10 border border-white/10 rounded-full flex items-center justify-center">
+        <span className="text-white/20 text-xs font-medium capitalize">{style.label.slice(0, 2)}</span>
+      </div>
+      <span className="text-white/20 text-xs capitalize tracking-wide">{style.label}</span>
+    </div>
+  )
+}
 
 interface ProductCardProps {
   product: Product
@@ -10,29 +34,27 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps) {
+  const [imgFailed, setImgFailed] = useState(false)
   const formattedPrice = new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: product.currency ?? 'GBP',
   }).format(product.price)
 
+  const showPlaceholder = !product.imageUrl || imgFailed
+
   return (
     <div className="group bg-zinc-900 rounded-2xl overflow-hidden border border-white/5 hover:border-white/15 transition-all duration-300">
       {/* Product Image */}
       <div className="aspect-[3/4] bg-zinc-800 overflow-hidden relative">
-        {product.imageUrl ? (
+        {showPlaceholder ? (
+          <ImagePlaceholder category={product.category} />
+        ) : (
           <img
             src={product.imageUrl}
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement
-              target.style.display = 'none'
-            }}
+            onError={() => setImgFailed(true)}
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-white/20 text-xs">
-            No image
-          </div>
         )}
 
         {/* Replace button — appears on hover */}

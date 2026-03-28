@@ -65,22 +65,55 @@ export function ChatInterface() {
       })
 
       if (!response.ok) throw new Error('Request failed')
+      if (!response.body) throw new Error('No response body')
 
-      const data = await response.json()
+      // Read the SSE stream — each event updates the loading indicator or delivers the result
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
 
-      // Remove loading message and add AI response
-      useChatStore.setState((state) => ({
-        messages: state.messages.filter((m) => m.id !== loadingMsg.id),
-      }))
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-      if (data.text) {
-        addMessage({ type: 'ai_text', content: data.text })
-      }
+        buffer += decoder.decode(value, { stream: true })
+        const chunks = buffer.split('\n\n')
+        buffer = chunks.pop() ?? ''
 
-      if (data.outfitBoard) {
-        addMessage({ type: 'ai_outfit_board', outfitBoard: data.outfitBoard })
-        setCurrentBoard(data.outfitBoard)
-        track('board_generated', { occasion_type: data.outfitBoard.occasion })
+        for (const chunk of chunks) {
+          if (!chunk.startsWith('data: ')) continue
+          let event: { type: string; text?: string; outfitBoard?: import('@/lib/types').OutfitBoard; hasBoard?: boolean; error?: string }
+          try {
+            event = JSON.parse(chunk.slice(6))
+          } catch {
+            continue
+          }
+
+          if (event.type === 'status' && event.text) {
+            // Update the loading bubble text in-place — user sees live progress
+            useChatStore.setState((state) => ({
+              messages: state.messages.map((m) =>
+                m.id === loadingMsg.id ? { ...m, content: event.text } : m
+              ),
+            }))
+          } else if (event.type === 'result') {
+            // Remove loading message, add final response
+            useChatStore.setState((state) => ({
+              messages: state.messages.filter((m) => m.id !== loadingMsg.id),
+            }))
+
+            if (event.text) {
+              addMessage({ type: 'ai_text', content: event.text })
+            }
+            if (event.outfitBoard) {
+              addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
+              setCurrentBoard(event.outfitBoard)
+              track('board_generated', { occasion_type: event.outfitBoard.occasion })
+            }
+          } else if (event.type === 'error') {
+            throw new Error(event.error ?? 'Unknown error')
+          }
+        }
       }
     } catch (error) {
       useChatStore.setState((state) => ({

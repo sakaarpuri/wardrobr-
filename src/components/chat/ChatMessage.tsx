@@ -18,10 +18,17 @@ export function ChatMessage({ message }: ChatMessageProps) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex items-center gap-2 text-white/40 text-sm py-2"
+        className="flex items-center gap-2.5 text-white/50 text-sm py-2"
       >
-        <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Styling your look...</span>
+        <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+        <motion.span
+          key={message.content ?? 'loading'}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {message.content ?? 'Styling your look…'}
+        </motion.span>
       </motion.div>
     )
   }
