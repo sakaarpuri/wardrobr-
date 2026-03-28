@@ -26,6 +26,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Marquee */
+@keyframes marquee {
+  from { transform: translateX(0) }
+  to   { transform: translateX(-50%) }
+}
+.animate-marquee {
+  animation: marquee 50s linear infinite;
+}
+
+/* Slow breathe for glow orb */
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; transform: scale(1) translate(-50%, -50%); }
+  50%       { opacity: 1;   transform: scale(1.12) translate(-45%, -48%); }
+}
+.animate-breathe {
+  animation: breathe 8s ease-in-out infinite;
+}
+
 /* Thin scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
