@@ -32,7 +32,7 @@ export interface ImageMetadata {
  */
 export async function classifyIntent(userInput: string): Promise<ClassifyIntentResult> {
   const model = getLiteGenAI().getGenerativeModel({
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-3.1-flash-lite-preview',
     generationConfig: { temperature: 0, maxOutputTokens: 100 },
   })
 
@@ -64,7 +64,7 @@ export async function classifyImage(
   mimeType = 'image/jpeg'
 ): Promise<ImageMetadata> {
   const model = getLiteGenAI().getGenerativeModel({
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-3.1-flash-lite-preview',
     generationConfig: { temperature: 0, maxOutputTokens: 200 },
   })
 

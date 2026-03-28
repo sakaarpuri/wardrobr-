@@ -84,7 +84,7 @@ export const geminiFunctions: FunctionDeclaration[] = [
 
 export function getGeminiModel() {
   return getGenAI().getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
     systemInstruction: SYSTEM_PROMPT,
     tools: [{ functionDeclarations: geminiFunctions }],
     generationConfig: {
