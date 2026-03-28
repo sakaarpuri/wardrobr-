@@ -3,6 +3,7 @@ export type MessageType =
   | 'user_image'
   | 'ai_text'
   | 'ai_product_card'
+  | 'ai_product_stream'
   | 'ai_outfit_board'
   | 'ai_style_analysis'
   | 'system_loading'

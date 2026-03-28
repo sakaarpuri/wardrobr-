@@ -5,6 +5,7 @@ import { useChatStore } from '@/store/chatStore'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { track } from '@/lib/posthog'
+import { Product } from '@/lib/types'
 
 export function ChatInterface() {
   const { messages, isLoading, addMessage, setLoading, setCurrentBoard, setOccasionContext } = useChatStore()
@@ -20,6 +21,8 @@ export function ChatInterface() {
     imageMimeType?: string,
     imagePreview?: string
   ) => {
+    // ID of the live product stream message (shown while Gemini searches)
+    let productStreamId: string | null = null
     // Track occasion context for swap requests
     if (text) setOccasionContext(text)
 
@@ -96,11 +99,34 @@ export function ChatInterface() {
                 m.id === loadingMsg.id ? { ...m, content: event.text } : m
               ),
             }))
+          } else if (event.type === 'products') {
+            // Products arriving live — show or update the product stream row
+            const incoming = (event as { type: string; products?: Product[] }).products ?? []
+            if (incoming.length === 0) continue
+            if (!productStreamId) {
+              // First batch — create a new message
+              const streamMsg = addMessage({ type: 'ai_product_stream', products: incoming })
+              productStreamId = streamMsg.id
+            } else {
+              // Subsequent batches — append products to the existing stream message
+              const sid = productStreamId
+              useChatStore.setState((state) => ({
+                messages: state.messages.map((m) =>
+                  m.id === sid
+                    ? { ...m, products: [...(m.products ?? []), ...incoming] }
+                    : m
+                ),
+              }))
+            }
           } else if (event.type === 'result') {
-            // Remove loading message, add final response
+            // Remove loading message + product stream (board replaces it), add final response
+            const sid = productStreamId
             useChatStore.setState((state) => ({
-              messages: state.messages.filter((m) => m.id !== loadingMsg.id),
+              messages: state.messages.filter(
+                (m) => m.id !== loadingMsg.id && m.id !== sid
+              ),
             }))
+            productStreamId = null
 
             if (event.text) {
               addMessage({ type: 'ai_text', content: event.text })

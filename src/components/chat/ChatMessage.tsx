@@ -2,6 +2,7 @@
 
 import { Message } from '@/lib/types'
 import { OutfitBoard } from '@/components/board/OutfitBoard'
+import { ProductCard } from '@/components/board/ProductCard'
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 
@@ -38,6 +39,30 @@ export function ChatMessage({ message }: ChatMessageProps) {
       <div className="py-2">
         <OutfitBoard board={message.outfitBoard} />
       </div>
+    )
+  }
+
+  // Live product stream — horizontal scroll row of cards while Gemini searches
+  if (message.type === 'ai_product_stream' && message.products && message.products.length > 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="py-1"
+      >
+        <p className="text-white/30 text-xs mb-2 flex items-center gap-1.5">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Finding pieces…
+        </p>
+        <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+          {message.products.map((product) => (
+            <div key={product.id} className="flex-shrink-0 w-36">
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      </motion.div>
     )
   }
 

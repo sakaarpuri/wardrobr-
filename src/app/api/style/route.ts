@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Part } from '@google/generative-ai'
-import { getGeminiModel, analyseStyleFromImage } from '@/lib/gemini'
+import { getGeminiModel } from '@/lib/gemini'
 import { searchProducts, rewriteAffiliateUrl } from '@/lib/affiliate'
 import { routeRequest } from '@/lib/gemini-router'
 import { Product, OutfitBoard } from '@/lib/types'
@@ -29,6 +29,55 @@ function statusFor(name: string, args: Record<string, unknown>): string {
   if (name === 'analyse_outfit_image') return 'Analysing your image…'
   if (name === 'get_product_details') return 'Fetching product details…'
   return 'Working on it…'
+}
+
+// ─── File API upload ──────────────────────────────────────────────────────────
+
+/**
+ * Upload a base64-encoded image to the Gemini File API.
+ * Returns a Part using fileData (works for vision) instead of inlineData (broken).
+ */
+async function uploadImagePart(base64: string, mimeType: string): Promise<Part> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('GEMINI_API_KEY not set')
+
+  // Decode base64 → binary buffer
+  const binary = Buffer.from(base64, 'base64')
+
+  // Multipart upload to File API
+  const boundary = `----WardrobrBoundary${Date.now()}`
+  const metaJson = JSON.stringify({ file: { mimeType } })
+
+  const parts: Buffer[] = [
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metaJson}\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`),
+    binary,
+    Buffer.from(`\r\n--${boundary}--`),
+  ]
+  const body = Buffer.concat(parts)
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}&uploadType=multipart`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/related; boundary=${boundary}`,
+        'Content-Length': String(body.length),
+      },
+      body,
+    }
+  )
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`File API upload failed ${res.status}: ${errText}`)
+  }
+
+  const data = await res.json() as { file?: { uri?: string; mimeType?: string } }
+  const fileUri = data.file?.uri
+  if (!fileUri) throw new Error('File API returned no URI')
+
+  return { fileData: { mimeType, fileUri } } as Part
 }
 
 // ─── Route ────────────────────────────────────────────────────────────────────
@@ -80,6 +129,18 @@ export async function POST(req: NextRequest) {
       try {
         emit({ type: 'status', text: 'Reading your style request…' })
 
+        // ── Upload image to File API (needed for vision — inlineData not supported) ──
+        let imagePart: Part | null = null
+        if (imageBase64) {
+          emit({ type: 'status', text: 'Uploading your photo…' })
+          try {
+            imagePart = await uploadImagePart(imageBase64, imageMimeType ?? 'image/jpeg')
+          } catch (uploadErr) {
+            console.error('Image upload failed:', uploadErr)
+            emit({ type: 'status', text: 'Photo upload failed — continuing without image…' })
+          }
+        }
+
         // Only run Flash-Lite classification when there's an image — text-only
         // doesn't benefit from the pre-call and it adds ~500 ms of latency.
         const route = imageBase64
@@ -91,9 +152,7 @@ export async function POST(req: NextRequest) {
         const chat = model.startChat({ history: safeHistory })
 
         const messageParts: Part[] = []
-        if (imageBase64) {
-          messageParts.push(analyseStyleFromImage(imageBase64, imageMimeType ?? 'image/jpeg') as Part)
-        }
+        if (imagePart) messageParts.push(imagePart)
         const textWithContext = [route.imageContextHint, message].filter(Boolean).join('\n')
         if (textWithContext) messageParts.push({ text: textWithContext })
 
@@ -132,6 +191,11 @@ export async function POST(req: NextRequest) {
               for (const product of searchResult.products) {
                 collectedProducts.set(product.id, product)
                 productCache.set(product.id, product)
+              }
+
+              // Emit products immediately so the UI can show them live
+              if (searchResult.products.length > 0) {
+                emit({ type: 'products', products: searchResult.products })
               }
 
               fnResult = {

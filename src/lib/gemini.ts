@@ -84,7 +84,8 @@ export const geminiFunctions: FunctionDeclaration[] = [
 
 export function getGeminiModel() {
   return getGenAI().getGenerativeModel({
-    model: 'gemini-3-flash-preview',
+    // gemini-2.5-flash: stable, supports function calling + File API vision
+    model: 'gemini-2.5-flash',
     systemInstruction: SYSTEM_PROMPT,
     tools: [{ functionDeclarations: geminiFunctions }],
     generationConfig: {
@@ -93,13 +94,3 @@ export function getGeminiModel() {
     },
   })
 }
-
-export function analyseStyleFromImage(base64Image: string, mimeType: string = 'image/jpeg') {
-  return {
-    inlineData: {
-      data: base64Image,
-      mimeType,
-    },
-  }
-}
-
