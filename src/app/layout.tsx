@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${cormorant.variable} h-full`}>
-      <body className="font-sans bg-black text-white antialiased h-full">
+      <body className="font-sans bg-[#0C0A09] text-white antialiased h-full">
         {children}
         {/* Skimlinks auto-affiliate script — loads after page is interactive */}
         <Script

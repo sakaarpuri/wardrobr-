@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { OutfitBoard as OutfitBoardType, Product } from '@/lib/types'
 import { ProductCard } from './ProductCard'
 import { SwapModal } from './SwapModal'
-import { ImageDown, Mail, Loader2 } from 'lucide-react'
+import { ImageDown, Mail, Loader2, ShoppingBag } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useChatStore } from '@/store/chatStore'
 import { track } from '@/lib/posthog'
@@ -153,6 +153,16 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
 
           {/* Action buttons */}
           <div className="flex items-center gap-1">
+            {/* Open all shop links at once */}
+            <button
+              onClick={() => board.products.forEach(p => window.open(p.affiliateUrl || p.productUrl, '_blank'))}
+              className="flex items-center gap-1.5 text-white/40 hover:text-white text-xs transition-colors px-2 py-1 rounded-lg hover:bg-white/5"
+              title="Open all shop pages"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Shop all</span>
+            </button>
+
             <button
               onClick={handleShare}
               disabled={isSharing}
@@ -164,7 +174,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
               ) : (
                 <ImageDown className="w-3.5 h-3.5" />
               )}
-              <span className="hidden sm:inline">Save look</span>
+              <span className="hidden sm:inline">Save</span>
             </button>
 
             <button

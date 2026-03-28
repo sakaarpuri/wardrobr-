@@ -14,10 +14,10 @@ const MARQUEE_ITEMS = [
 ]
 
 const EXAMPLE_PROMPTS = [
-  'Summer wedding, under £200',
-  'New job first week, smart casual',
-  'Inspired by The Row, under £400',
-  'Holiday capsule, Zara budget',
+  'Night out, under £60',
+  'Summer wedding, £150 max',
+  'New job, smart casual',
+  'Holiday looks, ASOS budget',
 ]
 
 const HOW_IT_WORKS = [
@@ -25,34 +25,34 @@ const HOW_IT_WORKS = [
     icon: MessageSquare,
     label: '01',
     title: 'Chat your occasion',
-    body: 'Tell me the event, budget, vibe, even an inspiring brand. "Summer wedding, The Row aesthetic, under £300."',
+    body: 'Tell me the event, your budget, or a vibe. "Night out under £50" or "wedding guest, nothing too fussy."',
   },
   {
     icon: Camera,
     label: '02',
     title: 'Show a photo',
-    body: 'Upload a screenshot, mood board, or outfit you love. I\'ll read the look and build a shoppable version.',
+    body: 'Upload a screenshot or outfit inspo. I\'ll find real, shoppable versions from ASOS, H&M, Zara and more.',
   },
   {
     icon: Shirt,
     label: '03',
     title: 'Live inspiration',
-    body: 'Point your camera at clothes in your wardrobe or a shop window. I\'ll style them into a complete outfit.',
+    body: 'Point your camera at something you own or spotted in a shop. I\'ll build a full outfit around it.',
   },
 ]
 
 const EXAMPLE_BOARDS = [
   {
+    title: 'Friday Night Out',
+    items: ['Satin Slip Dress · ASOS · £28', 'Strappy Heels · New Look · £22', 'Mini Bag · Primark · £10', 'Gold Hoops · ASOS · £8'],
+  },
+  {
     title: 'Summer Wedding Guest',
-    items: ['Floral Midi Dress · & Other Stories · £89', 'Block Heel Sandals · Dune · £75', 'Mini Clutch · Mango · £29', 'Gold Earrings · ASOS · £12'],
+    items: ['Floral Midi Dress · ASOS · £42', 'Block Heel Sandals · New Look · £28', 'Satin Clutch · Primark · £12', 'Pearl Earrings · ASOS · £8'],
   },
   {
     title: 'New Job, First Week',
-    items: ['Tailored Blazer · Reiss · £195', 'Wide Leg Trousers · COS · £79', 'Fitted Tee · Uniqlo · £19', 'Derby Shoes · Clarks · £85'],
-  },
-  {
-    title: 'Holiday Capsule Wardrobe',
-    items: ['Linen Shirt Dress · Zara · £39', 'Tailored Shorts · H&M · £24', 'Strappy Sandals · Office · £65', 'Canvas Tote · ASOS · £22'],
+    items: ['Tailored Blazer · H&M · £49', 'Wide Leg Trousers · Zara · £35', 'Ribbed Tee · ASOS · £14', 'Loafers · New Look · £32'],
   },
 ]
 
@@ -223,26 +223,31 @@ export default function HomePage() {
           }}
         />
 
-        {/* Editorial headline */}
-        <div className="relative z-10 mb-8">
+        {/* Headline */}
+        <div className="relative z-10 mb-6">
           <p className="text-white/30 text-xs uppercase tracking-[0.35em] font-medium mb-5">
-            AI Personal Stylist · UK Fashion
+            Free · No signup · UK stores
           </p>
           <h1 className="leading-none mb-3">
-            <span className="block text-white/40 font-sans font-light text-3xl sm:text-4xl tracking-tight mb-1">
-              Your AI
+            <span className="block text-white/45 font-sans font-light text-3xl sm:text-4xl tracking-tight mb-1">
+              Your outfit,
             </span>
             <span
               className="font-display italic font-medium text-white"
               style={{ fontSize: 'clamp(5rem, 14vw, 10rem)', lineHeight: 1 }}
             >
-              stylist.
+              sorted.
             </span>
           </h1>
           <p className="font-display italic text-white/35 text-xl sm:text-2xl mt-3">
-            for every occasion.
+            any occasion. any budget.
           </p>
         </div>
+
+        <p className="relative z-10 text-white/45 text-sm max-w-xs leading-relaxed mb-8">
+          Tell me what you need — I&apos;ll pull a complete look from ASOS,
+          H&amp;M, Zara, New Look and more. Shoppable immediately.
+        </p>
 
         {/* Live input — the entry point */}
         <div className="relative z-10 mb-14">
