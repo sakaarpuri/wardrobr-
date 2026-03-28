@@ -100,7 +100,7 @@ export function ChatInterface() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ scrollbarWidth: 'thin' }}>
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-12">
+          <div className="flex flex-col items-center justify-end h-full text-center gap-3 pb-4">
             <p className="text-white/20 text-sm max-w-xs">
               What&apos;s the occasion? Tell me the dress code, your budget, and when it is — I&apos;ll build the complete outfit.
             </p>

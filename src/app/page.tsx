@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Sparkles, Upload, MessageSquare } from 'lucide-react'
+import { ArrowRight, Upload, MessageSquare } from 'lucide-react'
 
 const EXAMPLE_BOARDS = [
   {
@@ -32,11 +32,6 @@ export default function HomePage() {
 
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center">
-        <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-xs text-white/60 mb-8">
-          <Sparkles className="w-3 h-3" />
-          Powered by Gemini · Real items · Affiliate links
-        </div>
-
         <h1 className="text-5xl sm:text-7xl font-bold tracking-tight text-white leading-none mb-6">
           Your AI stylist
           <br />
