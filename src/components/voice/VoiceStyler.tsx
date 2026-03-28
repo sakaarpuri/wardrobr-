@@ -186,6 +186,18 @@ export function VoiceStyler() {
     }
   }, [addMessage, setCurrentBoard, setLoading, setOccasionContext])
 
+  const submitNow = useCallback(() => {
+    // User tapped the mic button to explicitly stop and send
+    const text = finalTranscriptRef.current.trim()
+    stopListening()
+    if (text) {
+      runStyleRequest(text)
+    } else {
+      setVoiceState('idle')
+      setTranscript('')
+    }
+  }, [runStyleRequest, stopListening])
+
   const startListening = useCallback(() => {
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition
     if (!SR) { setIsSupported(false); return }
@@ -275,11 +287,14 @@ export function VoiceStyler() {
           <X className="w-4 h-4" />
         </button>
 
-        <div
+        <button
+          onClick={voiceState === 'listening' ? submitNow : undefined}
+          disabled={voiceState === 'processing'}
+          aria-label={voiceState === 'listening' ? 'Tap to send' : undefined}
           className={[
-            'w-14 h-14 rounded-full flex items-center justify-center shadow-lg select-none',
-            voiceState === 'listening' && 'bg-white text-black animate-pulse',
-            voiceState === 'processing' && 'bg-zinc-700 text-white/50',
+            'w-14 h-14 rounded-full flex items-center justify-center shadow-lg',
+            voiceState === 'listening' && 'bg-white text-black animate-pulse active:scale-95 transition-transform cursor-pointer',
+            voiceState === 'processing' && 'bg-zinc-700 text-white/50 cursor-not-allowed',
             voiceState === 'error' && 'bg-red-500/50 text-white',
           ].filter(Boolean).join(' ')}
         >
@@ -288,11 +303,11 @@ export function VoiceStyler() {
           ) : (
             <Mic className="w-6 h-6" />
           )}
-        </div>
+        </button>
       </div>
 
       <p className="text-white/30 text-xs self-end">
-        {voiceState === 'listening' && 'Listening — stop speaking to send'}
+        {voiceState === 'listening' && 'Tap mic to send · × to cancel'}
         {voiceState === 'processing' && 'Styling your look…'}
         {voiceState === 'error' && 'Mic error — tap × to close'}
       </p>

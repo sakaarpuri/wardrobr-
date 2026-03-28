@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, KeyboardEvent } from 'react'
-import { Send, ImagePlus, X } from 'lucide-react'
+import { Send, Camera, X } from 'lucide-react'
 import { ImageUpload } from '@/components/upload/ImageUpload'
 
 interface ChatInputProps {
@@ -80,12 +80,13 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
       <div className="flex items-end gap-2 bg-zinc-900 border border-white/10 rounded-2xl px-3 py-2.5">
         <button
           onClick={() => setShowImageUpload(!showImageUpload)}
+          title="Upload a photo of a look to style"
           className={`
             flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors
-            ${showImageUpload ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/10'}
+            ${showImageUpload ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'}
           `}
         >
-          <ImagePlus className="w-4 h-4" />
+          <Camera className="w-4 h-4" />
         </button>
 
         <textarea
