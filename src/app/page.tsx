@@ -63,7 +63,7 @@ export default function HomePage() {
 
       {/* Example boards */}
       <section className="px-6 pb-20">
-        <p className="text-white/30 text-xs text-center uppercase tracking-widest mb-8">
+        <p className="text-white/45 text-xs text-center uppercase tracking-widest mb-8">
           Example outfit boards
         </p>
         <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-4">
@@ -79,13 +79,13 @@ export default function HomePage() {
               </div>
               <ul className="space-y-1.5">
                 {board.items.map((item) => (
-                  <li key={item} className="text-white/40 text-xs leading-snug">
+                  <li key={item} className="text-white/60 text-xs leading-snug">
                     {item}
                   </li>
                 ))}
               </ul>
               <div className="mt-4 pt-4 border-t border-white/5">
-                <span className="text-white/20 text-xs">Styled by Wardrobr.ai</span>
+                <span className="text-white/35 text-xs">Styled by Wardrobr.ai</span>
               </div>
             </Link>
           ))}
@@ -94,8 +94,8 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
-        <span className="text-white/20 text-xs">© 2026 Wardrobr.ai</span>
-        <span className="text-white/20 text-xs">UK fashion · Affiliate links</span>
+        <span className="text-white/40 text-xs">© 2026 Wardrobr.ai</span>
+        <span className="text-white/40 text-xs">UK fashion · Affiliate links</span>
       </footer>
     </div>
   )
