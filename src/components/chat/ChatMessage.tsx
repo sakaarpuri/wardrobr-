@@ -83,10 +83,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
         transition={{ duration: 0.3 }}
         className="py-1"
       >
-        <p className="font-display italic text-white/25 text-xs mb-2 flex items-center gap-2">
+        <div className="font-display italic text-white/25 text-xs mb-2 flex items-center gap-2">
           <PulsingDots />
           Finding pieces…
-        </p>
+        </div>
         <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
           {message.products.map((product, i) => (
             <motion.div
