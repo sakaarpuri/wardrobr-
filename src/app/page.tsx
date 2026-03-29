@@ -284,7 +284,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div>
-                <p className="text-white text-sm font-semibold mb-1.5">{title}</p>
+                <p className="text-[#EDE0CE] text-sm font-semibold mb-1.5">{title}</p>
                 <p className="text-white/35 text-xs leading-relaxed">{body}</p>
               </div>
             </Link>
@@ -308,7 +308,7 @@ export default function HomePage() {
               className="group bg-[#110D0A]/80 border border-white/5 hover:border-[#E8A94A]/25 rounded-2xl p-5 transition-all text-left w-full"
             >
               <div className="flex items-start justify-between mb-4">
-                <h3 className="text-white text-sm font-semibold">{board.title}</h3>
+                <h3 className="text-[#EDE0CE] text-sm font-semibold">{board.title}</h3>
                 <ArrowRight className="w-3.5 h-3.5 text-white/25 group-hover:text-white/50 transition-colors mt-0.5 flex-shrink-0" />
               </div>
               <ul className="space-y-2">
