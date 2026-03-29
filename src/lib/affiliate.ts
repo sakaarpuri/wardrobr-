@@ -92,36 +92,38 @@ export async function searchProducts(params: SearchProductsParams): Promise<Prod
 interface SerpApiShoppingResult {
   position: number
   title: string
-  link: string
+  product_link: string   // direct product URL
+  link?: string          // fallback
   source: string
   price?: string
   extracted_price?: number
   thumbnail?: string
-  serpapi_product_api_comparisons?: string
+  rating?: number
+  reviews?: number
+  snippet?: string
 }
 
 async function searchViaSerpApi(params: SearchProductsParams, apiKey: string): Promise<ProductSearchResult> {
   try {
-    // Build a focused query: include budget hint if price range given
+    // Build a focused query
     let q = params.query
-    if (params.maxPrice) q += ` under £${params.maxPrice}`
     if (params.gender) q = `${params.gender === 'men' ? "men's" : "women's"} ${q}`
 
     const searchParams = new URLSearchParams({
       engine: 'google_shopping',
       q,
-      gl: 'gb',
+      google_domain: 'google.co.uk',  // UK Google domain → UK retailers
+      gl: 'uk',                        // United Kingdom
       hl: 'en',
-      num: String(Math.min((params.limit ?? 5) * 2, 20)), // fetch extra, filter down
       api_key: apiKey,
     })
-    if (params.minPrice) searchParams.set('price_min', String(params.minPrice))
-    if (params.maxPrice) searchParams.set('price_max', String(params.maxPrice))
+    if (params.minPrice) searchParams.set('min_price', String(params.minPrice))
+    if (params.maxPrice) searchParams.set('max_price', String(params.maxPrice))
 
     const res = await fetch(`https://serpapi.com/search?${searchParams}`, {
       next: { revalidate: 300 },
     })
-    if (!res.ok) throw new Error(`SerpApi ${res.status}`)
+    if (!res.ok) throw new Error(`SerpApi ${res.status}: ${await res.text()}`)
 
     const data = await res.json()
     const raw: SerpApiShoppingResult[] = data.shopping_results ?? []
@@ -131,7 +133,8 @@ async function searchViaSerpApi(params: SearchProductsParams, apiKey: string): P
         .filter(r => r.thumbnail && r.extracted_price)
         .slice(0, params.limit ?? 5)
         .map(async (r, i) => {
-          const affiliateUrl = await rewriteAffiliateUrl(r.link)
+          const productUrl = r.product_link ?? r.link ?? ''
+          const affiliateUrl = await rewriteAffiliateUrl(productUrl)
           return {
             id: `serp-${i}-${Date.now()}`,
             name: r.title,
@@ -139,10 +142,11 @@ async function searchViaSerpApi(params: SearchProductsParams, apiKey: string): P
             price: r.extracted_price!,
             currency: 'GBP',
             imageUrl: r.thumbnail!,
-            productUrl: r.link,
+            productUrl,
             affiliateUrl,
             storeName: r.source,
             category: params.category ?? 'clothing',
+            description: r.snippet,
           }
         })
     )
