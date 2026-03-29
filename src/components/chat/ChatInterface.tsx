@@ -6,7 +6,7 @@ import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { track } from '@/lib/posthog'
 import { ClarificationPrompt, Message, Product } from '@/lib/types'
-import { getMissionTitle, getTripPreferenceTitle, inferProfileFromReply, isLikelyClarificationReply, normaliseUserProfile } from '@/lib/shopper'
+import { getBudgetLabel, getMissionTitle, getTripPreferenceTitle, inferProfileFromReply, isLikelyClarificationReply, normaliseUserProfile } from '@/lib/shopper'
 
 const STARTER_REQUESTS = [
   'Trip to India in summer',
@@ -194,11 +194,14 @@ export function ChatInterface() {
           }
         }
       }
-    } catch {
+    } catch (error) {
       useChatStore.setState((state) => ({
         messages: state.messages.filter((message) => message.id !== loadingMsg.id),
       }))
-      addMessage({ type: 'ai_text', content: "Sorry, I couldn't process that request. Please try again." })
+      addMessage({
+        type: 'ai_text',
+        content: error instanceof Error ? error.message : "Sorry, I couldn't process that request. Please try again.",
+      })
     } finally {
       setLoading(false)
     }
@@ -246,7 +249,7 @@ export function ChatInterface() {
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto px-4 py-4" style={{ scrollbarWidth: 'thin' }}>
         <div className="mx-auto w-full max-w-3xl space-y-4">
-          {(userProfile.mission || userProfile.tripPreference || userProfile.budget || userProfile.size || userProfile.gender || userProfile.shoeSize || userProfile.occasionStrictness || userProfile.fitNotes) && (
+          {(userProfile.mission || userProfile.tripPreference || userProfile.budget || userProfile.budgetMax || userProfile.size || userProfile.gender || userProfile.shoeSize || userProfile.occasionStrictness || userProfile.fitNotes) && (
             <div className="flex flex-wrap gap-2">
               {userProfile.mission && (
                 <span className="rounded-full border border-[#E8A94A]/30 bg-[#E8A94A]/10 px-3 py-1 text-[11px] text-[#E8A94A]">
@@ -258,9 +261,9 @@ export function ChatInterface() {
                   {getTripPreferenceTitle(userProfile.tripPreference)}
                 </span>
               )}
-              {userProfile.budget && (
+              {getBudgetLabel(userProfile) && (
                 <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
-                  {userProfile.budgetScope === 'per_item' ? 'Per item' : 'Budget'} {userProfile.budget}
+                  {userProfile.budgetScope === 'per_item' ? 'Per item' : 'Budget'} {getBudgetLabel(userProfile)}
                 </span>
               )}
               {userProfile.size && (

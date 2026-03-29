@@ -176,11 +176,14 @@ export function VoiceStyler() {
           }
         }
       }
-    } catch {
+    } catch (error) {
       useChatStore.setState((state) => ({
         messages: state.messages.filter((message) => message.id !== loadingMsg.id && message.id !== productStreamId),
       }))
-      addMessage({ type: 'ai_text', content: "Sorry, I couldn't process that. Please try again." })
+      addMessage({
+        type: 'ai_text',
+        content: error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.",
+      })
     } finally {
       setLoading(false)
       setVoiceState('idle')

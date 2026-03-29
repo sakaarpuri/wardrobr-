@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Part } from '@google/generative-ai'
 import { getGeminiModel } from '@/lib/gemini'
-import { searchProducts, rewriteAffiliateUrl } from '@/lib/affiliate'
+import { SearchProviderUnavailableError, searchProducts, rewriteAffiliateUrl } from '@/lib/affiliate'
 import { routeRequest } from '@/lib/gemini-router'
 import { ClarificationGroup, ClarificationPrompt, Product, OutfitBoard } from '@/lib/types'
-import { UserProfile, buildProfileContext, getBudgetCap, getBudgetStatus, getSearchPriceCap, inferProfileFromReply, normaliseUserProfile } from '@/lib/shopper'
+import { UserProfile, buildProfileContext, getBudgetCap, getBudgetLabel, getBudgetStatus, getSearchPriceCap, inferProfileFromReply, normaliseUserProfile } from '@/lib/shopper'
 import crypto from 'crypto'
 
 // Allow up to 60s on Vercel (Pro) — Gemini agentic loop can take 15-25s
@@ -252,22 +252,26 @@ export async function POST(req: NextRequest) {
                 .map(id => collectedProducts.get(id) ?? productCache.get(id))
                 .filter((p): p is Product => !!p)
               const totalPrice = boardProducts.reduce((sum, product) => sum + product.price, 0)
+              const boardType = getBoardType(boardProducts)
+              const pricingReference = getBudgetReferenceTotal(boardProducts, boardType)
+              const budgetCap = getBudgetCap(profile.budget, profile.budgetMax)
 
               outfitBoard = {
                 id: crypto.randomUUID(),
                 title,
                 products: boardProducts,
+                boardType,
                 createdAt: new Date().toISOString(),
                 occasion,
                 styleNote,
-                totalPrice,
-                budgetCap: getBudgetCap(profile.budget),
-                budgetLabel: profile.budget,
-                budgetRemaining: getBudgetCap(profile.budget) !== null
-                  ? Number(((getBudgetCap(profile.budget) ?? 0) - totalPrice).toFixed(2))
+                totalPrice: boardType === 'shortlist' ? undefined : totalPrice,
+                budgetCap,
+                budgetLabel: getBudgetLabel(profile),
+                budgetRemaining: budgetCap !== null
+                  ? Number((budgetCap - pricingReference).toFixed(2))
                   : null,
-                budgetStatus: getBudgetStatus(totalPrice, profile.budget),
-                warnings: buildBoardWarnings(profile, totalPrice, boardProducts.map((product) => product.category)),
+                budgetStatus: getBudgetStatus(pricingReference, profile.budget, profile.budgetMax),
+                warnings: buildBoardWarnings(profile, pricingReference, boardProducts.map((product) => product.category), boardType),
               }
 
               fnResult = { success: true, boardId: outfitBoard.id, productCount: boardProducts.length }
@@ -298,7 +302,12 @@ export async function POST(req: NextRequest) {
         emit({ type: 'result', text: aiText, outfitBoard, hasBoard: !!outfitBoard })
       } catch (error) {
         console.error('Style API error:', error)
-        emit({ type: 'error', error: 'Failed to process styling request' })
+        emit({
+          type: 'error',
+          error: error instanceof SearchProviderUnavailableError
+            ? error.message
+            : 'Failed to process styling request',
+        })
       } finally {
         controller.close()
       }
@@ -356,7 +365,7 @@ function getClarificationPrompt(
   const hasCategory = /(dress|blazer|jacket|coat|trousers|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit)/.test(text)
 
   if (!profile.mission && wordCount <= 6 && !hasCategory) {
-    if (!hasOccasion || wordCount <= 4) {
+    if (!hasOccasion || wordCount <= 3) {
       return {
         question: 'Pick the route and I’ll shop it.',
         groups: [buildMissionClarificationGroup()],
@@ -384,9 +393,10 @@ function getTravelClarificationPrompt(
   const destination = destinationMatch?.[1]?.replace(/[,.!?]+$/g, '').trim()
   const timing = timingMatch?.[1]?.toLowerCase() ?? null
   const warmDestination = /(las palmas|la palma|gran canaria|tenerife|mallorca|majorca|ibiza|canary islands|barcelona|lisbon|amalfi|mykonos|athens|nice|miami|dubai)/.test(text)
+  const alreadyHasMixedTrip = /\bboth\b|\bmixed\b|\ba mix\b|daytime and dinner|day and dinner|daytime \+ dinner|day and night|beach and dinner/.test(text)
   const groups: ClarificationGroup[] = []
 
-  if (!profile.tripPreference) {
+  if (!profile.tripPreference && !alreadyHasMixedTrip) {
     groups.push({
       id: 'trip_preference' as const,
       label: 'Trip mix',
@@ -479,7 +489,8 @@ function buildMissionClarificationGroup(): ClarificationGroup {
 function buildBoardWarnings(
   profile: UserProfile,
   totalPrice: number,
-  categories: string[]
+  categories: string[],
+  boardType: OutfitBoard['boardType']
 ) {
   const warnings: string[] = ['Stock can change quickly on retailer pages.']
 
@@ -491,12 +502,33 @@ function buildBoardWarnings(
     warnings.push('You have not set a shoe size yet, so shoe picks are based on style rather than fit.')
   }
 
-  const budgetCap = getBudgetCap(profile.budget)
+  const budgetCap = getBudgetCap(profile.budget, profile.budgetMax)
   if (budgetCap && totalPrice > budgetCap) {
-    warnings.push('This board is over your stated budget.')
+    warnings.push(boardType === 'shortlist' ? 'Some picks in this shortlist sit over your stated budget.' : 'This board is over your stated budget.')
   }
 
   return warnings
+}
+
+function getBoardType(products: Product[]): OutfitBoard['boardType'] {
+  if (products.length <= 1) return 'outfit'
+
+  const categories = new Set(products.map((product) => normaliseCategory(product.category)))
+  return categories.size <= 1 ? 'shortlist' : 'outfit'
+}
+
+function getBudgetReferenceTotal(products: Product[], boardType: OutfitBoard['boardType']) {
+  if (products.length === 0) return 0
+
+  if (boardType === 'shortlist') {
+    return Math.max(...products.map((product) => product.price))
+  }
+
+  return products.reduce((sum, product) => sum + product.price, 0)
+}
+
+function normaliseCategory(category: string) {
+  return category.trim().toLowerCase()
 }
 
 // ─── Simple extraction helpers ────────────────────────────────────────────────

@@ -16,6 +16,7 @@ export interface UserProfile {
   size: string | null
   shoeSize: string | null
   budget: string | null
+  budgetMax: number | null
   budgetScope: BudgetScope
   mission: ShopperMission | null
   tripPreference: TripPreference | null
@@ -65,6 +66,7 @@ export function getEmptyUserProfile(): UserProfile {
     size: null,
     shoeSize: null,
     budget: null,
+    budgetMax: null,
     budgetScope: 'total',
     mission: null,
     tripPreference: null,
@@ -82,13 +84,14 @@ export function normaliseUserProfile(profile?: Partial<UserProfile> | null): Use
 
 export function buildProfileContext(profile: UserProfile): string {
   const parts: string[] = []
+  const budgetLabel = getBudgetLabel(profile)
 
   if (profile.mission) parts.push(`shopping mission: ${getMissionPrompt(profile.mission)}`)
   if (profile.tripPreference) parts.push(`trip mix: ${getTripPreferencePrompt(profile.tripPreference)}`)
   if (profile.gender) parts.push(`shopping for ${profile.gender}'s clothing`)
   if (profile.size) parts.push(`preferred UK size ${profile.size}`)
   if (profile.shoeSize) parts.push(`preferred UK shoe size ${profile.shoeSize}`)
-  if (profile.budget) parts.push(`${profile.budgetScope === 'per_item' ? 'per-item budget' : 'total budget'} ${profile.budget}`)
+  if (budgetLabel) parts.push(`${profile.budgetScope === 'per_item' ? 'per-item budget' : 'total budget'} ${budgetLabel}`)
   if (profile.fitNotes) parts.push(`fit notes: ${profile.fitNotes}`)
   if (profile.occasionStrictness) parts.push(`occasion strictness: ${profile.occasionStrictness}`)
   if (profile.mission && profile.tripPreference) parts.push('structured travel clarification complete, proceed without asking another follow-up question')
@@ -149,21 +152,29 @@ export function inferProfileFromReply(
   const text = message.trim().toLowerCase()
   const assistant = lastAssistantText?.trim().toLowerCase() ?? ''
   const next: Partial<UserProfile> = {}
+  const hasOccasion = /(wedding|interview|job|office|party|date|holiday|trip|travel|brunch|festival|graduation|work|weekend|ceremony|gala|conference)/.test(text)
+  const hasCategory = /(dress|blazer|jacket|coat|trousers|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit|blouse|shorts)/.test(text)
+  const mentionsMens = /\b(men|men's|mens|male|groom)\b/.test(text)
+  const mentionsWomens = /\b(women|women's|womens|woman|female|plus-size|curve|maternity)\b/.test(text)
 
   if (!text) return next
 
   if (!profile.mission) {
     if (/(full look|full outfit|complete look|whole outfit)/.test(text)) {
       next.mission = 'full_look'
+    } else if (/\b(find me one|one hero|single pick|single item|one key item)\b/.test(text)) {
+      next.mission = 'hero_piece'
     } else if (/(hero piece|one key item|one item|single item|single piece|key piece)/.test(text)) {
       next.mission = 'hero_piece'
     } else if (/(style what i own|style something i own|style what i have)/.test(text)) {
       next.mission = 'style_existing'
+    } else if (hasOccasion && !hasCategory) {
+      next.mission = 'full_look'
     }
   }
 
   if (!profile.tripPreference) {
-    if (/\bboth\b|\bmixed\b|\ba mix\b/.test(text)) {
+    if (/\bboth\b|\bmixed\b|\ba mix\b|daytime and dinner|day and dinner|daytime \+ dinner|day and night|beach and dinner/.test(text)) {
       next.tripPreference = 'mixed'
     } else if (/(casual|relaxed|beach|walking|daytime|exploring)/.test(text) && !/(dressy|dressier|dinner|evening|formal)/.test(text)) {
       next.tripPreference = 'daytime'
@@ -171,6 +182,36 @@ export function inferProfileFromReply(
       next.tripPreference = 'dressy'
     } else if (assistant.includes('relaxed') && assistant.includes('dressier') && /\bboth\b/.test(text)) {
       next.tripPreference = 'mixed'
+    }
+  }
+
+  if (!profile.gender) {
+    if (mentionsMens) {
+      next.gender = 'men'
+    } else if (mentionsWomens) {
+      next.gender = 'women'
+    } else if (/\bwedding guest\b/.test(text) && !mentionsMens) {
+      next.gender = 'women'
+    }
+  }
+
+  if (!profile.budgetMax) {
+    const exactBudgetMatch = text.match(/(?:under|below|max|maximum|budget(?: of)?|up to)\s*£?\s*(\d{2,4})/)
+      ?? text.match(/£\s*(\d{2,4})\s*(?:max|budget)?/)
+      ?? text.match(/(\d{2,4})\s*(?:quid|pounds)\s*(?:max|budget)?/)
+
+    if (exactBudgetMatch) {
+      const amount = Number(exactBudgetMatch[1])
+      if (Number.isFinite(amount) && amount >= 20 && amount <= 5000) {
+        next.budgetMax = amount
+      }
+    }
+  }
+
+  if (!profile.size) {
+    const sizeMatch = text.match(/\bsize\s*(\d{1,2}|xs|s|m|l|xl)\b/)
+    if (sizeMatch) {
+      next.size = sizeMatch[1].toUpperCase()
     }
   }
 
@@ -191,7 +232,8 @@ export function isLikelyClarificationReply(
   return Object.keys(inferProfileFromReply(text, profile, lastAssistantText)).length > 0
 }
 
-export function getBudgetCap(label: string | null): number | null {
+export function getBudgetCap(label: string | null, budgetMax?: number | null): number | null {
+  if (budgetMax && budgetMax > 0) return budgetMax
   if (!label) return null
   if (label === 'Under £50') return 50
   if (label === '£50–150') return 150
@@ -201,7 +243,7 @@ export function getBudgetCap(label: string | null): number | null {
 }
 
 export function getSearchPriceCap(profile: UserProfile): number | null {
-  const totalCap = getBudgetCap(profile.budget)
+  const totalCap = getBudgetCap(profile.budget, profile.budgetMax)
   if (!totalCap) return null
 
   if (profile.budgetScope === 'per_item' || profile.mission === 'hero_piece') return totalCap
@@ -210,10 +252,15 @@ export function getSearchPriceCap(profile: UserProfile): number | null {
   return Math.max(15, Math.ceil(totalCap / divisor))
 }
 
-export function getBudgetStatus(totalPrice: number, budgetLabel: string | null): 'under' | 'over' | 'unknown' {
-  const cap = getBudgetCap(budgetLabel)
+export function getBudgetStatus(totalPrice: number, budgetLabel: string | null, budgetMax?: number | null): 'under' | 'over' | 'unknown' {
+  const cap = getBudgetCap(budgetLabel, budgetMax)
   if (!cap) return 'unknown'
   return totalPrice <= cap ? 'under' : 'over'
+}
+
+export function getBudgetLabel(profile: Pick<UserProfile, 'budget' | 'budgetMax'>): string | null {
+  if (profile.budgetMax) return `Under £${profile.budgetMax}`
+  return profile.budget
 }
 
 export function formatCurrency(amount: number, currency = 'GBP') {

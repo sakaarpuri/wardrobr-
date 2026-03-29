@@ -1,17 +1,70 @@
 import { Product, SearchProductsParams, ProductSearchResult } from './types'
 
+export class SearchProviderUnavailableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'SearchProviderUnavailableError'
+  }
+}
+
 /**
- * Search for products via SerpApi Google Shopping (UK).
- * Falls back to mock data if SERPAPI_KEY is not set.
+ * Search for products via RapidAPI Real-Time Product Search first, then SerpApi.
+ * Falls back to mock data only when explicitly allowed.
  */
 export async function searchProducts(params: SearchProductsParams): Promise<ProductSearchResult> {
+  const rapidApiHost = process.env.RAPIDAPI_HOST
+  const rapidApiKey = process.env.RAPIDAPI_KEY
   const serpApiKey = process.env.SERPAPI_KEY
+  const allowMockSearch = process.env.ALLOW_MOCK_SEARCH === 'true'
 
-  if (serpApiKey) {
-    return searchViaSerpApi(params, serpApiKey)
+  if (rapidApiHost && rapidApiKey) {
+    try {
+      return await searchViaRapidApi(params, rapidApiHost, rapidApiKey)
+    } catch (error) {
+      if (!serpApiKey) {
+        if (allowMockSearch) {
+          console.warn('RapidAPI search failed, using mock search because ALLOW_MOCK_SEARCH=true', error)
+          return getMockProducts(params)
+        }
+
+        if (error instanceof SearchProviderUnavailableError) {
+          throw error
+        }
+
+        throw new SearchProviderUnavailableError(
+          'RapidAPI product search failed. Check your RapidAPI credentials, subscription, or quota.'
+        )
+      }
+    }
   }
 
-  return getMockProducts(params)
+  if (serpApiKey) {
+    try {
+      return await searchViaSerpApi(params, serpApiKey)
+    } catch (error) {
+      if (allowMockSearch) {
+        console.warn('SerpApi search failed, using mock search because ALLOW_MOCK_SEARCH=true', error)
+        return getMockProducts(params)
+      }
+
+      if (error instanceof SearchProviderUnavailableError) {
+        throw error
+      }
+
+      throw new SearchProviderUnavailableError(
+        'Live product search failed. Check your RapidAPI or SerpApi credentials, or set ALLOW_MOCK_SEARCH=true for demo mode.'
+      )
+    }
+  }
+
+  if (allowMockSearch) {
+    console.warn('No live search provider configured, using mock search because ALLOW_MOCK_SEARCH=true')
+    return getMockProducts(params)
+  }
+
+  throw new SearchProviderUnavailableError(
+    'Live product search is unavailable. Add RapidAPI credentials, or re-enable SerpApi, or set ALLOW_MOCK_SEARCH=true for demo mode.'
+  )
 }
 
 /**
@@ -23,6 +76,30 @@ export async function rewriteAffiliateUrl(originalUrl: string): Promise<string> 
 }
 
 // ─── SerpApi Google Shopping ──────────────────────────────────────────────────
+
+interface RapidApiProductOffer {
+  offer_id?: string
+  offer_page_url?: string
+  price?: string
+  original_price?: string | null
+  store_name?: string
+}
+
+interface RapidApiProduct {
+  product_id: string
+  product_title: string
+  product_description?: string
+  product_photos?: string[]
+  product_page_url?: string
+  offer?: RapidApiProductOffer
+}
+
+interface RapidApiSearchResponse {
+  status?: string
+  data?: {
+    products?: RapidApiProduct[]
+  }
+}
 
 interface SerpApiShoppingResult {
   position: number
@@ -54,64 +131,141 @@ interface SerpApiImmersiveResponse {
 
 const immersiveUrlCache = new Map<string, Promise<{ productUrl: string | null; brand?: string }>>()
 
-async function searchViaSerpApi(params: SearchProductsParams, apiKey: string): Promise<ProductSearchResult> {
-  try {
-    let q = params.query
-    if (params.gender) q = `${params.gender === 'men' ? "men's" : "women's"} ${q}`
+async function searchViaRapidApi(
+  params: SearchProductsParams,
+  host: string,
+  apiKey: string
+): Promise<ProductSearchResult> {
+  let q = params.query
+  if (params.gender) q = `${params.gender === 'men' ? "men's" : "women's"} ${q}`
 
-    const searchParams = new URLSearchParams({
-      engine: 'google_shopping',
-      q,
-      google_domain: 'google.co.uk',  // UK Google domain → UK retailers
-      gl: 'uk',                        // United Kingdom
-      hl: 'en',
-      api_key: apiKey,
-    })
-    if (params.minPrice) searchParams.set('min_price', String(params.minPrice))
-    if (params.maxPrice) searchParams.set('max_price', String(params.maxPrice))
+  const searchParams = new URLSearchParams({
+    q,
+    country: (params.region ?? 'uk').toLowerCase(),
+    language: 'en',
+    page: '1',
+    limit: String(Math.min(params.limit ?? 5, 10)),
+    sort_by: 'BEST_MATCH',
+    product_condition: 'ANY',
+    return_filters: 'true',
+  })
+  if (params.minPrice) searchParams.set('min_price', String(params.minPrice))
+  if (params.maxPrice) searchParams.set('max_price', String(params.maxPrice))
 
-    const res = await fetch(`https://serpapi.com/search?${searchParams}`, {
-      next: { revalidate: 300 },
-    })
-    if (!res.ok) throw new Error(`SerpApi ${res.status}: ${await res.text()}`)
+  const res = await fetch(`https://${host}/search-v2?${searchParams.toString()}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-rapidapi-host': host,
+      'x-rapidapi-key': apiKey,
+    },
+    next: { revalidate: 300 },
+  })
 
-    const data = await res.json()
-    const raw: SerpApiShoppingResult[] = data.shopping_results ?? []
-
-    const products: Product[] = await Promise.all(
-      raw
-        .filter(r => r.thumbnail && r.extracted_price)
-        .slice(0, params.limit ?? 5)
-        .map(async (r, i) => {
-          const resolved = await resolveMerchantProductUrl(r, apiKey)
-          const productUrl = resolved.productUrl ?? r.product_link ?? r.link ?? ''
-          const allImages = [
-            ...(r.thumbnail ? [r.thumbnail] : []),
-            ...(r.thumbnails ?? []),
-          ].filter((img, idx, arr) => arr.indexOf(img) === idx)
-
-          return {
-            id: `serp-${i}-${Date.now()}`,
-            name: r.title,
-            brand: resolved.brand ?? r.source,
-            price: r.extracted_price!,
-            currency: 'GBP',
-            imageUrl: allImages[0] ?? r.thumbnail!,
-            images: allImages.length > 1 ? allImages : undefined,
-            productUrl,
-            affiliateUrl: productUrl,  // direct merchant PDP for now, affiliate rewriting is still server-side when available
-            storeName: r.source,
-            category: params.category ?? 'clothing',
-            description: r.snippet,
-          }
-        })
-    )
-
-    return { products, total: products.length, query: params.query }
-  } catch (error) {
-    console.error('SerpApi error:', error)
-    return getMockProducts(params)
+  if (!res.ok) {
+    const message = await res.text()
+    if (res.status === 429) {
+      throw new SearchProviderUnavailableError('RapidAPI quota is exhausted. Top up the account or upgrade the plan.')
+    }
+    throw new SearchProviderUnavailableError(`RapidAPI returned ${res.status}. ${message}`)
   }
+
+  const data = await res.json() as RapidApiSearchResponse
+  const raw = data.data?.products ?? []
+
+  const products = raw
+    .map((product, index): Product | null => {
+      const price = parsePriceValue(product.offer?.price)
+      const productUrl = product.offer?.offer_page_url ?? product.product_page_url ?? ''
+      const images = (product.product_photos ?? []).filter(Boolean)
+      if (!price || !productUrl || images.length === 0) return null
+
+      return {
+        id: `rapid-${index}-${Date.now()}`,
+        name: product.product_title,
+        brand: guessBrand(product.product_title),
+        price,
+        currency: inferCurrency(product.offer?.price),
+        imageUrl: images[0],
+        images: images.length > 1 ? images : undefined,
+        productUrl,
+        affiliateUrl: productUrl,
+        storeName: product.offer?.store_name ?? 'Unknown store',
+        category: params.category ?? 'clothing',
+        description: product.product_description,
+      }
+    })
+    .filter((product): product is Product => Boolean(product))
+
+  if (products.length === 0) {
+    throw new SearchProviderUnavailableError(`RapidAPI returned no usable products for "${params.query}".`)
+  }
+
+  return { products, total: products.length, query: params.query }
+}
+
+async function searchViaSerpApi(params: SearchProductsParams, apiKey: string): Promise<ProductSearchResult> {
+  let q = params.query
+  if (params.gender) q = `${params.gender === 'men' ? "men's" : "women's"} ${q}`
+
+  const searchParams = new URLSearchParams({
+    engine: 'google_shopping',
+    q,
+    google_domain: 'google.co.uk',  // UK Google domain → UK retailers
+    gl: 'uk',                        // United Kingdom
+    hl: 'en',
+    api_key: apiKey,
+  })
+  if (params.minPrice) searchParams.set('min_price', String(params.minPrice))
+  if (params.maxPrice) searchParams.set('max_price', String(params.maxPrice))
+
+  const res = await fetch(`https://serpapi.com/search?${searchParams}`, {
+    next: { revalidate: 300 },
+  })
+  if (!res.ok) {
+    const message = await res.text()
+    if (res.status === 429) {
+      throw new SearchProviderUnavailableError('SerpApi quota is exhausted. Top up the account or switch to another search provider.')
+    }
+    throw new SearchProviderUnavailableError(`SerpApi returned ${res.status}. ${message}`)
+  }
+
+  const data = await res.json()
+  const raw: SerpApiShoppingResult[] = data.shopping_results ?? []
+
+  const products: Product[] = await Promise.all(
+    raw
+      .filter(r => r.thumbnail && r.extracted_price)
+      .slice(0, params.limit ?? 5)
+      .map(async (r, i) => {
+        const resolved = await resolveMerchantProductUrl(r, apiKey)
+        const productUrl = resolved.productUrl ?? r.product_link ?? r.link ?? ''
+        const allImages = [
+          ...(r.thumbnail ? [r.thumbnail] : []),
+          ...(r.thumbnails ?? []),
+        ].filter((img, idx, arr) => arr.indexOf(img) === idx)
+
+        return {
+          id: `serp-${i}-${Date.now()}`,
+          name: r.title,
+          brand: resolved.brand ?? r.source,
+          price: r.extracted_price!,
+          currency: 'GBP',
+          imageUrl: allImages[0] ?? r.thumbnail!,
+          images: allImages.length > 1 ? allImages : undefined,
+          productUrl,
+          affiliateUrl: productUrl,
+          storeName: r.source,
+          category: params.category ?? 'clothing',
+          description: r.snippet,
+        }
+      })
+  )
+
+  if (products.length === 0) {
+    throw new SearchProviderUnavailableError(`Live product search returned no results for "${params.query}".`)
+  }
+
+  return { products, total: products.length, query: params.query }
 }
 
 function isGoogleShoppingUrl(url: string | undefined) {
@@ -264,4 +418,22 @@ function getMockProducts(params: SearchProductsParams): ProductSearchResult {
     total: results.length,
     query: params.query,
   }
+}
+
+function parsePriceValue(rawPrice: string | undefined) {
+  if (!rawPrice) return null
+  const numeric = Number(rawPrice.replace(/[^0-9.]+/g, ''))
+  return Number.isFinite(numeric) ? numeric : null
+}
+
+function inferCurrency(rawPrice: string | undefined) {
+  if (!rawPrice) return 'GBP'
+  if (rawPrice.includes('£')) return 'GBP'
+  if (rawPrice.includes('$')) return 'USD'
+  if (rawPrice.includes('€')) return 'EUR'
+  return 'GBP'
+}
+
+function guessBrand(title: string) {
+  return title.split(/\s+/).find(Boolean) ?? 'Unknown'
 }

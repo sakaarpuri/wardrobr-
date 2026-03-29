@@ -40,6 +40,7 @@ export interface OutfitBoard {
   id: string
   title: string
   products: Product[]
+  boardType?: 'outfit' | 'shortlist'
   styleAnalysis?: StyleAnalysis
   styleNote?: string
   createdAt: string

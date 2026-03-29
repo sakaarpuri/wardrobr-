@@ -133,6 +133,16 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
   }
 
   const totalPrice = board.totalPrice ?? board.products.reduce((sum, product) => sum + product.price, 0)
+  const isShortlist = board.boardType === 'shortlist'
+  const prices = board.products.map((product) => product.price)
+  const minPrice = prices.length > 0 ? Math.min(...prices) : 0
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : 0
+  const shortlistBudgetCopy =
+    board.budgetRemaining !== null && board.budgetRemaining !== undefined
+      ? board.budgetRemaining >= 0
+        ? `Most expensive pick leaves ${formatCurrency(board.budgetRemaining)} headroom.`
+        : `Most expensive pick is ${formatCurrency(Math.abs(board.budgetRemaining))} over budget.`
+      : null
   const budgetTone =
     board.budgetStatus === 'over'
       ? 'border-rose-400/30 bg-rose-400/10 text-rose-100'
@@ -206,7 +216,9 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 space-y-2">
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
-                Total {formatCurrency(totalPrice)}
+                {isShortlist
+                  ? `${board.products.length} picks${minPrice === maxPrice ? ` · ${formatCurrency(maxPrice)} each` : ` · ${formatCurrency(minPrice)}-${formatCurrency(maxPrice)} each`}`
+                  : `Total ${formatCurrency(totalPrice)}`}
               </span>
               {board.budgetLabel && (
                 <span className={`rounded-full border px-3 py-1 text-[11px] ${budgetTone}`}>
@@ -217,10 +229,17 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
             {board.styleNote && (
               <p className="text-xs leading-relaxed text-[var(--text-muted)]">{board.styleNote}</p>
             )}
+            {isShortlist && (
+              <p className="text-[11px] text-[var(--text-faint)]">
+                This is a shortlist in one category, so pricing is shown per pick rather than as one outfit total.
+              </p>
+            )}
             {board.budgetCap !== null && board.budgetCap !== undefined && (
               <p className="text-[11px] text-[var(--text-faint)]">
                 {board.budgetRemaining !== null && board.budgetRemaining !== undefined
-                  ? `Budget remaining ${formatCurrency(Math.max(board.budgetRemaining, 0))}`
+                  ? isShortlist
+                    ? shortlistBudgetCopy
+                    : `Budget remaining ${formatCurrency(Math.max(board.budgetRemaining, 0))}`
                   : `Budget cap ${formatCurrency(board.budgetCap)}`}
               </p>
             )}

@@ -57,7 +57,10 @@ export default function StylePage() {
                     {BUDGET_OPTIONS.map((budget) => (
                       <button
                         key={budget}
-                        onClick={() => setUserProfile({ budget: userProfile.budget === budget ? null : budget })}
+                        onClick={() => setUserProfile({
+                          budget: userProfile.budget === budget ? null : budget,
+                          budgetMax: null,
+                        })}
                         className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
                           userProfile.budget === budget
                             ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
