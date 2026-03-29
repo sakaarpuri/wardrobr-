@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${cormorant.variable} h-full`}>
+    <html lang="en" className={`${inter.variable} ${cormorant.variable} h-full`} suppressHydrationWarning>
       <body className="font-sans antialiased h-full">
         <ThemeProvider>
           {children}
