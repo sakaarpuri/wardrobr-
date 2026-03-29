@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Inter, Cormorant_Garamond } from 'next/font/google'
-import Script from 'next/script'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import './globals.css'
 

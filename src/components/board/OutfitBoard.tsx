@@ -8,20 +8,21 @@ import { ImageDown, Mail, Loader2, ShoppingBag } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useChatStore } from '@/store/chatStore'
 import { track } from '@/lib/posthog'
+import { SwapActionKey, formatCurrency } from '@/lib/shopper'
 
 interface OutfitBoardProps {
   board: OutfitBoardType
-  compact?: boolean
 }
 
-export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
-  const { occasionContext, swapBoardProduct } = useChatStore()
+export function OutfitBoard({ board }: OutfitBoardProps) {
+  const { occasionContext, swapBoardProduct, userProfile } = useChatStore()
 
   // Swap state
   const [swappingProductId, setSwappingProductId] = useState<string | null>(null)
   const [swapAlternatives, setSwapAlternatives] = useState<{
     product: Product
     alternatives: Product[]
+    actionLabel?: string
   } | null>(null)
 
   // Share state
@@ -32,7 +33,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
   const [email, setEmail] = useState('')
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
-  const handleReplace = async (product: Product) => {
+  const handleReplace = async (product: Product, action: SwapActionKey = 'same_vibe') => {
     setSwappingProductId(product.id)
     try {
       const res = await fetch('/api/style/swap', {
@@ -40,13 +41,18 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: product.id,
+          productName: product.name,
+          currentPrice: product.price,
+          currentStore: product.storeName,
           category: product.category,
           occasionContext,
+          action,
+          profile: userProfile,
         }),
       })
       if (!res.ok) throw new Error('Swap failed')
-      const { alternatives } = await res.json()
-      setSwapAlternatives({ product, alternatives })
+      const { alternatives, actionLabel } = await res.json()
+      setSwapAlternatives({ product, alternatives, actionLabel })
     } catch (error) {
       console.error('Replace error:', error)
     } finally {
@@ -126,13 +132,21 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
     }
   }
 
-  // Always prefer more columns — smaller, gallery-style cards
+  const totalPrice = board.totalPrice ?? board.products.reduce((sum, product) => sum + product.price, 0)
+  const budgetTone =
+    board.budgetStatus === 'over'
+      ? 'border-rose-400/30 bg-rose-400/10 text-rose-100'
+      : board.budgetStatus === 'under'
+      ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100'
+      : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)]'
+
+  // Fewer columns on mobile makes comparison easier for shoppers.
   const gridCols =
-    board.products.length <= 3
-      ? 'grid-cols-3'
-      : board.products.length === 4
-      ? 'grid-cols-4'
-      : 'grid-cols-3'
+    board.products.length <= 2
+      ? 'grid-cols-2'
+      : board.products.length === 3
+      ? 'grid-cols-2 sm:grid-cols-3'
+      : 'grid-cols-2 sm:grid-cols-4'
 
   return (
     <>
@@ -187,6 +201,40 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
             </button>
           </div>
         </div>
+
+        {(board.styleNote || board.budgetLabel || totalPrice > 0) && (
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
+                Total {formatCurrency(totalPrice)}
+              </span>
+              {board.budgetLabel && (
+                <span className={`rounded-full border px-3 py-1 text-[11px] ${budgetTone}`}>
+                  {board.budgetStatus === 'over' ? 'Over' : board.budgetStatus === 'under' ? 'Within' : 'Budget'} {board.budgetLabel}
+                </span>
+              )}
+            </div>
+            {board.styleNote && (
+              <p className="text-xs leading-relaxed text-[var(--text-muted)]">{board.styleNote}</p>
+            )}
+            {board.budgetCap !== null && board.budgetCap !== undefined && (
+              <p className="text-[11px] text-[var(--text-faint)]">
+                {board.budgetRemaining !== null && board.budgetRemaining !== undefined
+                  ? `Budget remaining ${formatCurrency(Math.max(board.budgetRemaining, 0))}`
+                  : `Budget cap ${formatCurrency(board.budgetCap)}`}
+              </p>
+            )}
+            {board.warnings && board.warnings.length > 0 && (
+              <div className="space-y-1">
+                {board.warnings.map((warning) => (
+                  <p key={warning} className="text-[11px] text-[var(--text-faint)]">
+                    {warning}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Email capture */}
         {showEmailInput && (
@@ -250,6 +298,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
       {swapAlternatives && (
         <SwapModal
           alternatives={swapAlternatives.alternatives}
+          actionLabel={swapAlternatives.actionLabel}
           onSelect={handleSwapSelect}
           onClose={() => setSwapAlternatives(null)}
         />

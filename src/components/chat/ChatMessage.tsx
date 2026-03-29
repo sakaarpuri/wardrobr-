@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Message } from '@/lib/types'
 import { OutfitBoard } from '@/components/board/OutfitBoard'
 import { ProductCard } from '@/components/board/ProductCard'
@@ -121,10 +122,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
         `}
       >
         {message.imageUrl && (
-          <img
+          <Image
             src={message.imageUrl}
             alt="Uploaded look"
-            className="max-h-48 rounded-xl object-cover mb-2"
+            width={320}
+            height={240}
+            unoptimized
+            className="mb-2 max-h-48 w-auto rounded-xl object-cover"
           />
         )}
         {message.content && (

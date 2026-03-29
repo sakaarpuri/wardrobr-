@@ -29,6 +29,7 @@ interface SerpApiShoppingResult {
   title: string
   product_link: string   // direct product URL
   link?: string          // fallback
+  serpapi_immersive_product_api?: string
   source: string
   price?: string
   extracted_price?: number
@@ -38,6 +39,20 @@ interface SerpApiShoppingResult {
   reviews?: number
   snippet?: string
 }
+
+interface SerpApiStoreResult {
+  name?: string
+  link?: string
+}
+
+interface SerpApiImmersiveResponse {
+  product_results?: {
+    brand?: string
+    stores?: SerpApiStoreResult[]
+  }
+}
+
+const immersiveUrlCache = new Map<string, Promise<{ productUrl: string | null; brand?: string }>>()
 
 async function searchViaSerpApi(params: SearchProductsParams, apiKey: string): Promise<ProductSearchResult> {
   try {
@@ -63,35 +78,106 @@ async function searchViaSerpApi(params: SearchProductsParams, apiKey: string): P
     const data = await res.json()
     const raw: SerpApiShoppingResult[] = data.shopping_results ?? []
 
-    const products: Product[] = raw
-      .filter(r => r.thumbnail && r.extracted_price)
-      .slice(0, params.limit ?? 5)
-      .map((r, i) => {
-        const productUrl = r.product_link ?? r.link ?? ''
-        const allImages = [
-          ...(r.thumbnail ? [r.thumbnail] : []),
-          ...(r.thumbnails ?? []),
-        ].filter((img, idx, arr) => arr.indexOf(img) === idx)
-        return {
-          id: `serp-${i}-${Date.now()}`,
-          name: r.title,
-          brand: r.source,
-          price: r.extracted_price!,
-          currency: 'GBP',
-          imageUrl: allImages[0] ?? r.thumbnail!,
-          images: allImages.length > 1 ? allImages : undefined,
-          productUrl,
-          affiliateUrl: productUrl,  // direct link — Sovrn JS will rewrite on click once approved
-          storeName: r.source,
-          category: params.category ?? 'clothing',
-          description: r.snippet,
-        }
-      })
+    const products: Product[] = await Promise.all(
+      raw
+        .filter(r => r.thumbnail && r.extracted_price)
+        .slice(0, params.limit ?? 5)
+        .map(async (r, i) => {
+          const resolved = await resolveMerchantProductUrl(r, apiKey)
+          const productUrl = resolved.productUrl ?? r.product_link ?? r.link ?? ''
+          const allImages = [
+            ...(r.thumbnail ? [r.thumbnail] : []),
+            ...(r.thumbnails ?? []),
+          ].filter((img, idx, arr) => arr.indexOf(img) === idx)
+
+          return {
+            id: `serp-${i}-${Date.now()}`,
+            name: r.title,
+            brand: resolved.brand ?? r.source,
+            price: r.extracted_price!,
+            currency: 'GBP',
+            imageUrl: allImages[0] ?? r.thumbnail!,
+            images: allImages.length > 1 ? allImages : undefined,
+            productUrl,
+            affiliateUrl: productUrl,  // direct merchant PDP for now, affiliate rewriting is still server-side when available
+            storeName: r.source,
+            category: params.category ?? 'clothing',
+            description: r.snippet,
+          }
+        })
+    )
 
     return { products, total: products.length, query: params.query }
   } catch (error) {
     console.error('SerpApi error:', error)
     return getMockProducts(params)
+  }
+}
+
+function isGoogleShoppingUrl(url: string | undefined) {
+  if (!url) return false
+  try {
+    const parsed = new URL(url)
+    return parsed.hostname.includes('google.')
+  } catch {
+    return false
+  }
+}
+
+function normaliseStoreName(name: string | undefined) {
+  return (name ?? '')
+    .toLowerCase()
+    .replace(/\b(gb|uk)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+async function resolveMerchantProductUrl(
+  result: SerpApiShoppingResult,
+  apiKey: string
+): Promise<{ productUrl: string | null; brand?: string }> {
+  if (result.product_link && !isGoogleShoppingUrl(result.product_link)) {
+    return { productUrl: result.product_link }
+  }
+
+  if (!result.serpapi_immersive_product_api) {
+    return { productUrl: result.product_link ?? result.link ?? null }
+  }
+
+  const cacheKey = result.serpapi_immersive_product_api
+  if (!immersiveUrlCache.has(cacheKey)) {
+    immersiveUrlCache.set(cacheKey, fetchImmersiveProductUrl(result.serpapi_immersive_product_api, result.source, apiKey))
+  }
+
+  return immersiveUrlCache.get(cacheKey)!
+}
+
+async function fetchImmersiveProductUrl(
+  immersiveApiUrl: string,
+  source: string,
+  apiKey: string
+): Promise<{ productUrl: string | null; brand?: string }> {
+  try {
+    const detailUrl = new URL(immersiveApiUrl)
+    detailUrl.searchParams.set('api_key', apiKey)
+    const detail = await fetch(detailUrl.toString(), {
+      next: { revalidate: 300 },
+    }).then((response) => response.json() as Promise<SerpApiImmersiveResponse>)
+
+    const stores = detail.product_results?.stores ?? []
+    const sourceName = normaliseStoreName(source)
+    const matchedStore =
+      stores.find((store) => normaliseStoreName(store.name) === sourceName && store.link) ??
+      stores.find((store) => normaliseStoreName(store.name).includes(sourceName) && store.link) ??
+      stores.find((store) => store.link)
+
+    return {
+      productUrl: matchedStore?.link ?? null,
+      brand: detail.product_results?.brand,
+    }
+  } catch (error) {
+    console.error('Immersive product lookup failed:', error)
+    return { productUrl: null }
   }
 }
 

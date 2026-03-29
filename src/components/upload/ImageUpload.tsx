@@ -1,8 +1,9 @@
 'use client'
 
+import Image from 'next/image'
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { Upload, ImagePlus, X } from 'lucide-react'
+import { ImagePlus, X } from 'lucide-react'
 
 interface ImageUploadProps {
   onImageSelect: (base64: string, mimeType: string, preview: string) => void
@@ -46,9 +47,12 @@ export function ImageUpload({ onImageSelect, onClear, selectedImage }: ImageUplo
   if (selectedImage) {
     return (
       <div className="relative inline-block">
-        <img
+        <Image
           src={selectedImage}
           alt="Selected outfit"
+          width={320}
+          height={240}
+          unoptimized
           className="max-h-48 max-w-xs rounded-xl object-cover border border-white/10"
         />
         {onClear && (

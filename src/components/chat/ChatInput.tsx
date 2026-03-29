@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState, useRef, KeyboardEvent } from 'react'
 import { Send, Camera, X } from 'lucide-react'
 import { ImageUpload } from '@/components/upload/ImageUpload'
@@ -51,9 +52,12 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
       {imagePreview && (
         <div className="flex items-start gap-2">
           <div className="relative">
-            <img
+            <Image
               src={imagePreview}
               alt="Selected"
+              width={64}
+              height={64}
+              unoptimized
               className="h-16 w-16 object-cover rounded-xl border border-[var(--border)]"
             />
             <button

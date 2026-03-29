@@ -1,11 +1,6 @@
 import { create } from 'zustand'
 import { Message, OutfitBoard, Product } from '@/lib/types'
-
-export interface UserProfile {
-  gender: 'women' | 'men' | null
-  size: string | null       // e.g. "10", "M", "L"
-  budget: string | null     // e.g. "£50–150"
-}
+import { UserProfile, getEmptyUserProfile } from '@/lib/shopper'
 
 export interface PendingMessage {
   text: string
@@ -37,12 +32,12 @@ interface ChatStore {
   updateLastMessage: (updates: Partial<Message>) => void
 }
 
-export const useChatStore = create<ChatStore>((set, get) => ({
+export const useChatStore = create<ChatStore>((set) => ({
   messages: [],
   isLoading: false,
   currentBoard: null,
   occasionContext: null,
-  userProfile: { gender: null, size: null, budget: null },
+  userProfile: getEmptyUserProfile(),
   pendingMessage: null,
 
   addMessage: (message) => {
@@ -101,13 +96,3 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       return { messages }
     }),
 }))
-
-/** Build a profile context string to prepend to Gemini messages */
-export function buildProfileContext(profile: UserProfile): string {
-  const parts: string[] = []
-  if (profile.gender) parts.push(`Shopping for ${profile.gender}'s clothing`)
-  if (profile.size) parts.push(`UK size ${profile.size}`)
-  if (profile.budget) parts.push(`budget ${profile.budget}`)
-  if (parts.length === 0) return ''
-  return `[Shopper profile: ${parts.join(', ')}]`
-}

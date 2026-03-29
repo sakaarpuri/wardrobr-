@@ -4,9 +4,11 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Script from 'next/script'
-import { ArrowRight, MessageSquare, Camera, Shirt, Send, Mic } from 'lucide-react'
+import { ArrowRight, Camera, Send, Mic } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { BUDGET_OPTIONS, MISSION_OPTIONS, SIZE_OPTIONS } from '@/lib/shopper'
+import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 
 const MARQUEE_ITEMS = [
   'Summer Wedding', 'Job Interview', 'First Date', 'Weekend Brunch',
@@ -22,42 +24,6 @@ const EXAMPLE_PROMPTS = [
   'Holiday looks, ASOS budget',
 ]
 
-const HOW_IT_WORKS = [
-  {
-    icon: MessageSquare,
-    label: '01',
-    title: 'Chat your occasion',
-    body: 'Tell me the event, your budget, or a vibe. "Night out under £50" or "wedding guest, nothing too fussy."',
-  },
-  {
-    icon: Camera,
-    label: '02',
-    title: 'Show a photo',
-    body: 'Upload a screenshot or outfit inspo. I\'ll find real, shoppable versions from ASOS, H&M, Zara and more.',
-  },
-  {
-    icon: Shirt,
-    label: '03',
-    title: 'Live inspiration',
-    body: 'Point your camera at something you own or spotted in a shop. I\'ll build a full outfit around it.',
-  },
-]
-
-const EXAMPLE_BOARDS = [
-  {
-    title: 'Friday Night Out',
-    items: ['Satin Slip Dress · ASOS · £28', 'Strappy Heels · New Look · £22', 'Mini Bag · Primark · £10', 'Gold Hoops · ASOS · £8'],
-  },
-  {
-    title: 'Summer Wedding Guest',
-    items: ['Floral Midi Dress · ASOS · £42', 'Block Heel Sandals · New Look · £28', 'Satin Clutch · Primark · £12', 'Pearl Earrings · ASOS · £8'],
-  },
-  {
-    title: 'New Job, First Week',
-    items: ['Tailored Blazer · H&M · £49', 'Wide Leg Trousers · Zara · £35', 'Ribbed Tee · ASOS · £14', 'Loafers · New Look · £32'],
-  },
-]
-
 // ─── Homepage input component ─────────────────────────────────────────────────
 
 function HomepageInput() {
@@ -65,7 +31,7 @@ function HomepageInput() {
   const [isListening, setIsListening] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
-  const { setPendingMessage, clearChat } = useChatStore()
+  const { setPendingMessage, clearChat, userProfile, setUserProfile } = useChatStore()
 
   const submit = (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => {
     if (!message.trim() && !imageBase64) return
@@ -113,14 +79,36 @@ function HomepageInput() {
   }
 
   return (
-    <div className="w-full max-w-xl">
+    <div className="w-full max-w-3xl space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {MISSION_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => setUserProfile({ mission: userProfile.mission === option.value ? null : option.value })}
+            className={`rounded-2xl border p-4 text-left transition-all ${
+              userProfile.mission === option.value
+                ? 'border-[#E8A94A]/55 bg-[#E8A94A]/10 shadow-[0_0_0_1px_rgba(232,169,74,0.08)]'
+                : 'border-[var(--border)] bg-[var(--bg-subtle)] hover:border-[#E8A94A]/30 hover:bg-[var(--bg-card)]'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[var(--text)] text-sm font-semibold">{option.title}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">{option.body}</p>
+              </div>
+              <span className="font-display italic text-3xl leading-none text-[#E8A94A]/60">{option.label}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+
       {/* Main input */}
       <div className="flex items-end gap-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-2xl px-4 py-3.5 focus-within:border-[#E8A94A]/60 transition-colors shadow-lg shadow-black/40">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Describe the occasion, budget, or a brand you love…"
+          placeholder="What are you shopping for? Try: wedding guest look, hero blazer for work, or style these trainers."
           rows={1}
           className="flex-1 bg-transparent text-[var(--text)] text-sm placeholder-[var(--text-muted)] resize-none outline-none leading-relaxed max-h-28 overflow-y-auto"
           style={{ scrollbarWidth: 'none' }}
@@ -155,6 +143,52 @@ function HomepageInput() {
         </div>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[var(--text)] text-xs font-semibold uppercase tracking-[0.25em]">Budget</p>
+            <span className="text-[var(--text-faint)] text-[11px]">Optional</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {BUDGET_OPTIONS.map((budget) => (
+              <button
+                key={budget}
+                onClick={() => setUserProfile({ budget: userProfile.budget === budget ? null : budget })}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                  userProfile.budget === budget
+                    ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
+                    : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
+                }`}
+              >
+                {budget}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[var(--text)] text-xs font-semibold uppercase tracking-[0.25em]">Size</p>
+            <span className="text-[var(--text-faint)] text-[11px]">Optional</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {SIZE_OPTIONS.map((size) => (
+              <button
+                key={size}
+                onClick={() => setUserProfile({ size: userProfile.size === size ? null : size })}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                  userProfile.size === size
+                    ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
+                    : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
+                }`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Example prompts */}
       <div className="flex flex-wrap gap-2 mt-3 justify-center">
         {EXAMPLE_PROMPTS.map((p) => (
@@ -170,7 +204,7 @@ function HomepageInput() {
 
       {/* Feature hints */}
       <p className="text-[var(--text-faint)] text-xs text-center mt-4 leading-relaxed">
-        Mention your size, budget, or a brand for inspiration — e.g. "size 10, The Row vibe, under £250"
+        We&apos;ll carry your mission, budget, and size into the results page, then tighten the picks from there.
       </p>
     </div>
   )
@@ -180,14 +214,6 @@ function HomepageInput() {
 
 export default function HomePage() {
   const marqueeText = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS]
-  const router = useRouter()
-  const { clearChat, setPendingMessage } = useChatStore()
-
-  const handleBoardClick = (title: string) => {
-    clearChat()
-    setPendingMessage({ text: title })
-    router.push('/style')
-  }
 
   return (
     <div className="min-h-screen bg-[var(--bg)] flex flex-col overflow-hidden">
@@ -245,13 +271,12 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="font-display italic text-[var(--text-muted)] text-xl sm:text-2xl mt-3">
-            any occasion. any budget.
+            start fast. refine with confidence.
           </p>
         </div>
 
-        <p className="relative z-10 text-[var(--text-muted)] text-sm max-w-xs leading-relaxed mb-8">
-          Tell me what you need — I&apos;ll pull a complete look from ASOS,
-          H&amp;M, Zara, New Look and more. Shoppable immediately.
+        <p className="relative z-10 text-[var(--text-muted)] text-sm max-w-md leading-relaxed mb-8">
+          Start with the shopping mission, add a budget or size if you want tighter picks, and we&apos;ll take you straight into live product results from UK stores.
         </p>
 
         {/* Live input — the entry point */}
@@ -273,57 +298,60 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Three mode cards */}
-        <div className="relative z-10 w-full max-w-3xl grid sm:grid-cols-3 gap-px bg-[#E8A94A]/8 rounded-2xl overflow-hidden border border-[#E8A94A]/10">
-          {HOW_IT_WORKS.map(({ icon: Icon, label, title, body }) => (
-            <Link
-              key={title}
-              href="/style"
-              className="group bg-[var(--bg-subtle)] hover:bg-[var(--bg-card)] p-6 space-y-4 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-display italic text-[#E8A94A]/50 text-3xl leading-none group-hover:text-[#E8A94A]/80 transition-colors">{label}</span>
-                <div className="w-8 h-8 rounded-lg bg-[#E8A94A]/8 border border-[#E8A94A]/15 flex items-center justify-center group-hover:bg-[#E8A94A]/15 transition-colors">
-                  <Icon className="w-3.5 h-3.5 text-[#E8A94A]/70" />
-                </div>
-              </div>
-              <div>
-                <p className="text-[var(--text)] text-sm font-semibold mb-1.5">{title}</p>
-                <p className="text-[var(--text-muted)] text-xs leading-relaxed">{body}</p>
-              </div>
-            </Link>
-          ))}
+        <div className="relative z-10 w-full max-w-3xl rounded-2xl border border-[#E8A94A]/10 bg-[var(--bg-subtle)] p-5 sm:p-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
+              <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-faint)]">Homepage</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--text)]">Capture the brief quickly</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">Mission first, then optional budget and size. No long form up front.</p>
+            </div>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
+              <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-faint)]">Results</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--text)]">Show the search working</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">Status updates, live product discovery, then a tighter board with budget context.</p>
+            </div>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
+              <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-faint)]">Shop</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--text)]">Go to the retailer</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">When we can resolve a merchant PDP, the shop action now goes there instead of a Google wrapper.</p>
+            </div>
+          </div>
         </div>
       </main>
 
-      {/* Example boards */}
+      {/* Exact example looks */}
       <div className="flex items-center gap-4 px-6 py-8 max-w-4xl mx-auto w-full">
         <div className="flex-1 h-px bg-[var(--border)]" />
-        <span className="text-[var(--text-faint)] text-xs uppercase tracking-widest">Example boards</span>
+        <span className="text-[var(--text-faint)] text-xs uppercase tracking-widest">Exact example looks</span>
         <div className="flex-1 h-px bg-[var(--border)]" />
       </div>
 
       <section className="px-6 pb-20">
         <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-4">
           {EXAMPLE_BOARDS.map((board) => (
-            <button
+            <Link
               key={board.title}
-              onClick={() => handleBoardClick(board.title)}
+              href={`/board/${board.id}`}
               className="group bg-[var(--bg-card)] border border-[var(--border)] hover:border-[#E8A94A]/25 rounded-2xl p-5 transition-all text-left w-full"
             >
               <div className="flex items-start justify-between mb-4">
-                <h3 className="text-[var(--text)] text-sm font-semibold">{board.title}</h3>
+                <div>
+                  <p className="text-[var(--text-faint)] text-[10px] uppercase tracking-[0.25em]">{board.kicker}</p>
+                  <h3 className="mt-1 text-[var(--text)] text-sm font-semibold">{board.title}</h3>
+                </div>
                 <ArrowRight className="w-3.5 h-3.5 text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors mt-0.5 flex-shrink-0" />
               </div>
               <ul className="space-y-2">
-                {board.items.map((item) => (
-                  <li key={item} className="text-[var(--text-muted)] text-xs leading-snug">{item}</li>
+                {board.board.products.map((product) => (
+                  <li key={product.id} className="text-[var(--text-muted)] text-xs leading-snug">
+                    {product.name} · {product.brand} · £{product.price}
+                  </li>
                 ))}
               </ul>
               <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                <span className="text-[var(--text-faint)] text-xs font-display italic">Try this board →</span>
+                <span className="text-[var(--text-faint)] text-xs font-display italic">Shop this exact look →</span>
               </div>
-            </button>
+            </Link>
           ))}
         </div>
       </section>

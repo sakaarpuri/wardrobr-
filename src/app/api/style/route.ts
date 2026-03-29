@@ -4,6 +4,7 @@ import { getGeminiModel } from '@/lib/gemini'
 import { searchProducts, rewriteAffiliateUrl } from '@/lib/affiliate'
 import { routeRequest } from '@/lib/gemini-router'
 import { Product, OutfitBoard } from '@/lib/types'
+import { UserProfile, buildProfileContext, getBudgetCap, getBudgetStatus, getSearchPriceCap, normaliseUserProfile } from '@/lib/shopper'
 import crypto from 'crypto'
 
 // Allow up to 60s on Vercel (Pro) — Gemini agentic loop can take 15-25s
@@ -92,14 +93,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Request too large' }, { status: 413 })
   }
 
-  let body: { message?: string; imageBase64?: string; imageMimeType?: string; history?: unknown[] }
+  let body: { message?: string; imageBase64?: string; imageMimeType?: string; history?: unknown[]; profile?: Partial<UserProfile> }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { message, imageBase64, imageMimeType, history = [] } = body
+  const { message, imageBase64, imageMimeType, history = [], profile: rawProfile } = body
+  const profile = normaliseUserProfile(rawProfile)
 
   if (!message && !imageBase64) {
     return NextResponse.json({ error: 'Message or image required' }, { status: 400 })
@@ -132,6 +134,12 @@ export async function POST(req: NextRequest) {
       try {
         emit({ type: 'status', text: 'Reading your style request…' })
 
+        const clarificationQuestion = getClarificationQuestion(message, profile, Boolean(imageBase64))
+        if (clarificationQuestion) {
+          emit({ type: 'result', text: clarificationQuestion, hasBoard: false })
+          return
+        }
+
         // ── Upload image to File API (needed for vision — inlineData not supported) ──
         let imagePart: Part | null = null
         if (imageBase64) {
@@ -156,7 +164,8 @@ export async function POST(req: NextRequest) {
 
         const messageParts: Part[] = []
         if (imagePart) messageParts.push(imagePart)
-        const textWithContext = [route.imageContextHint, message].filter(Boolean).join('\n')
+        const shopperContext = buildProfileContext(profile)
+        const textWithContext = [shopperContext, route.imageContextHint, message].filter(Boolean).join('\n')
         if (textWithContext) messageParts.push({ text: textWithContext })
 
         emit({ type: 'status', text: 'Thinking about your look…' })
@@ -189,7 +198,7 @@ export async function POST(req: NextRequest) {
                 gender?: 'men' | 'women' | 'unisex'
                 limit?: number
               }
-              const searchResult = await searchProducts(params)
+              const searchResult = await searchProducts(applyShopperConstraints(params, profile))
 
               for (const product of searchResult.products) {
                 collectedProducts.set(product.id, product)
@@ -228,15 +237,17 @@ export async function POST(req: NextRequest) {
                 description: imageDescription,
               }
             } else if (call.name === 'build_outfit_board') {
-              const { title, productIds, occasion } = call.args as {
+              const { title, productIds, occasion, styleNote } = call.args as {
                 title: string
                 productIds: string[]
                 occasion?: string
+                styleNote?: string
               }
 
               const boardProducts = productIds
                 .map(id => collectedProducts.get(id) ?? productCache.get(id))
                 .filter((p): p is Product => !!p)
+              const totalPrice = boardProducts.reduce((sum, product) => sum + product.price, 0)
 
               outfitBoard = {
                 id: crypto.randomUUID(),
@@ -244,6 +255,15 @@ export async function POST(req: NextRequest) {
                 products: boardProducts,
                 createdAt: new Date().toISOString(),
                 occasion,
+                styleNote,
+                totalPrice,
+                budgetCap: getBudgetCap(profile.budget),
+                budgetLabel: profile.budget,
+                budgetRemaining: getBudgetCap(profile.budget) !== null
+                  ? Number(((getBudgetCap(profile.budget) ?? 0) - totalPrice).toFixed(2))
+                  : null,
+                budgetStatus: getBudgetStatus(totalPrice, profile.budget),
+                warnings: buildBoardWarnings(profile, totalPrice, boardProducts.map((product) => product.category)),
               }
 
               fnResult = { success: true, boardId: outfitBoard.id, productCount: boardProducts.length }
@@ -289,6 +309,77 @@ export async function POST(req: NextRequest) {
       'Connection': 'keep-alive',
     },
   })
+}
+
+function applyShopperConstraints(
+  params: {
+    query: string
+    category?: string
+    minPrice?: number
+    maxPrice?: number
+    gender?: 'men' | 'women' | 'unisex'
+    limit?: number
+  },
+  profile: UserProfile
+) {
+  const nextParams = { ...params }
+
+  if (!nextParams.gender && profile.gender) {
+    nextParams.gender = profile.gender
+  }
+
+  const priceCap = getSearchPriceCap(profile)
+  if (priceCap) {
+    nextParams.maxPrice = nextParams.maxPrice ? Math.min(nextParams.maxPrice, priceCap) : priceCap
+  }
+
+  return nextParams
+}
+
+function getClarificationQuestion(
+  message: string | undefined,
+  profile: UserProfile,
+  hasImage: boolean
+) {
+  if (hasImage || !message) return null
+
+  const text = message.trim().toLowerCase()
+  const wordCount = text.split(/\s+/).filter(Boolean).length
+  const hasOccasion = /(wedding|interview|job|office|party|date|holiday|trip|brunch|festival|graduation|work|weekend|ceremony)/.test(text)
+  const hasCategory = /(dress|blazer|jacket|coat|trousers|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit)/.test(text)
+
+  if (!profile.mission && wordCount <= 4 && !hasOccasion && !hasCategory) {
+    return 'Are you after one key item or a full look?'
+  }
+
+  if ((profile.mission === 'full_look' || !profile.mission) && wordCount <= 6 && !hasOccasion && !hasCategory) {
+    return 'What are you dressing for so I can steer the look properly?'
+  }
+
+  return null
+}
+
+function buildBoardWarnings(
+  profile: UserProfile,
+  totalPrice: number,
+  categories: string[]
+) {
+  const warnings: string[] = ['Stock can change quickly on retailer pages.']
+
+  if (profile.size) {
+    warnings.push('Clothing size is still advisory, so double-check retailer availability before buying.')
+  }
+
+  if (categories.some((category) => category === 'shoes' || category === 'footwear') && !profile.shoeSize) {
+    warnings.push('You have not set a shoe size yet, so shoe picks are based on style rather than fit.')
+  }
+
+  const budgetCap = getBudgetCap(profile.budget)
+  if (budgetCap && totalPrice > budgetCap) {
+    warnings.push('This board is over your stated budget.')
+  }
+
+  return warnings
 }
 
 // ─── Simple extraction helpers ────────────────────────────────────────────────

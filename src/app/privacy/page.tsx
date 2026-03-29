@@ -61,7 +61,7 @@ export default function PrivacyPage() {
             <ul className="list-disc list-inside space-y-2 text-[var(--text-muted)]">
               <li><strong className="text-[var(--text)]">Sovrn Commerce (Viglink)</strong> — affiliate link management. <a href="https://sovrn.com/privacy-policy/" target="_blank" rel="noopener noreferrer" className="text-[#E8A94A] hover:underline">Their privacy policy</a>.</li>
               <li><strong className="text-[var(--text)]">Skimlinks</strong> — affiliate link management. <a href="https://skimlinks.com/privacy-policy/" target="_blank" rel="noopener noreferrer" className="text-[#E8A94A] hover:underline">Their privacy policy</a>.</li>
-              <li><strong className="text-[var(--text)]">Google Gemini</strong> — AI processing of your style requests. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[#E8A94A] hover:underline">Google's privacy policy</a>.</li>
+              <li><strong className="text-[var(--text)]">Google Gemini</strong> — AI processing of your style requests. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[#E8A94A] hover:underline">Google&apos;s privacy policy</a>.</li>
             </ul>
             <p className="mt-3">
               These third parties may set cookies or collect data in accordance with their own privacy policies.

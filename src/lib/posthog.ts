@@ -6,7 +6,6 @@
 
 let initialized = false
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PostHogInstance = { capture: (event: string, properties?: Record<string, unknown>) => void }
 let phInstance: PostHogInstance | null = null
 

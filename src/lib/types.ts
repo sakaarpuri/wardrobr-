@@ -38,8 +38,15 @@ export interface OutfitBoard {
   title: string
   products: Product[]
   styleAnalysis?: StyleAnalysis
+  styleNote?: string
   createdAt: string
   occasion?: string
+  totalPrice?: number
+  budgetCap?: number | null
+  budgetLabel?: string | null
+  budgetRemaining?: number | null
+  budgetStatus?: 'under' | 'over' | 'unknown'
+  warnings?: string[]
 }
 
 export interface Message {

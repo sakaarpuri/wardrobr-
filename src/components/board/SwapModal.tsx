@@ -1,16 +1,21 @@
 'use client'
 
+import Image from 'next/image'
+import { useState } from 'react'
 import { Product } from '@/lib/types'
 import { X, ExternalLink } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface SwapModalProps {
   alternatives: Product[]
+  actionLabel?: string
   onSelect: (product: Product) => void
   onClose: () => void
 }
 
-export function SwapModal({ alternatives, onSelect, onClose }: SwapModalProps) {
+export function SwapModal({ alternatives, actionLabel, onSelect, onClose }: SwapModalProps) {
+  const [failedImages, setFailedImages] = useState<Record<string, true>>({})
+
   return (
     <AnimatePresence>
       <motion.div
@@ -29,7 +34,7 @@ export function SwapModal({ alternatives, onSelect, onClose }: SwapModalProps) {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between">
-            <h3 className="text-white font-semibold text-sm">Choose a replacement</h3>
+            <h3 className="text-white font-semibold text-sm">{actionLabel ? `Choose a ${actionLabel.toLowerCase()} option` : 'Choose a replacement'}</h3>
             <button
               onClick={onClose}
               className="text-white/40 hover:text-white transition-colors"
@@ -46,15 +51,15 @@ export function SwapModal({ alternatives, onSelect, onClose }: SwapModalProps) {
                 className="group text-left bg-zinc-800 hover:bg-zinc-700 border border-white/5 hover:border-white/20 rounded-xl overflow-hidden transition-all"
               >
                 <div className="aspect-[3/4] bg-zinc-700 overflow-hidden">
-                  {product.imageUrl ? (
-                    <img
+                  {product.imageUrl && !failedImages[product.id] ? (
+                    <Image
                       src={product.imageUrl}
                       alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
-                      }}
+                      width={240}
+                      height={320}
+                      sizes="(max-width: 640px) 28vw, 180px"
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={() => setFailedImages((current) => ({ ...current, [product.id]: true }))}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-white/20 text-xs">

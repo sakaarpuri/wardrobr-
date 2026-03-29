@@ -7,7 +7,12 @@ import { useEffect, useState } from 'react'
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setMounted(true), 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [])
+
   if (!mounted) return <div className="w-8 h-8" />
 
   const isDark = theme === 'dark'

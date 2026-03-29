@@ -1,8 +1,10 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import { Product } from '@/lib/types'
 import { ExternalLink, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { SwapActionKey, getSwapActions } from '@/lib/shopper'
 
 const CATEGORY_STYLES: Record<string, { gradient: string; label: string }> = {
   tops:        { gradient: 'from-stone-800 to-stone-700',   label: 'Top' },
@@ -29,7 +31,7 @@ function ImagePlaceholder({ category }: { category: string }) {
 
 interface ProductCardProps {
   product: Product
-  onReplace?: (product: Product) => void
+  onReplace?: (product: Product, action?: SwapActionKey) => void
   isSwapping?: boolean
 }
 
@@ -60,6 +62,7 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
   }).format(product.price)
 
   const showPlaceholder = !currentImage || imgFailed
+  const swapActions = getSwapActions(product.category)
 
   return (
     <div className="group bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border)] hover:border-[var(--border-hover)] transition-all duration-300">
@@ -68,11 +71,13 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
         {showPlaceholder ? (
           <ImagePlaceholder category={product.category} />
         ) : (
-          <img
+          <Image
             key={currentImage}
             src={currentImage}
             alt={product.name}
-            className="w-full h-full object-cover transition-opacity duration-300"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-opacity duration-300"
             onError={() => setImgFailed(true)}
           />
         )}
@@ -98,6 +103,7 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
                 <button
                   key={i}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPhotoIdx(i); setImgFailed(false) }}
+                  aria-label={`View photo ${i + 1} for ${product.name}`}
                   className={`w-1 h-1 rounded-full transition-all ${i === photoIdx ? 'bg-white w-2' : 'bg-white/40'}`}
                 />
               ))}
@@ -105,16 +111,11 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
           </>
         )}
 
-        {/* Replace button — appears on hover */}
         {onReplace && (
-          <button
-            onClick={() => onReplace(product)}
-            disabled={isSwapping}
-            className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 text-[var(--text-muted)] hover:text-white text-xs px-2 py-1 rounded-lg border border-[var(--border)] hover:border-[var(--border-hover)] transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50 disabled:cursor-wait"
-          >
+          <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 text-[var(--text-muted)] text-xs px-2 py-1 rounded-lg border border-[var(--border)] opacity-0 group-hover:opacity-100 transition-all">
             <RefreshCw className={`w-3 h-3 ${isSwapping ? 'animate-spin' : ''}`} />
-            Replace
-          </button>
+            Refine
+          </div>
         )}
       </div>
 
@@ -142,6 +143,21 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
             <ExternalLink className="w-2.5 h-2.5" />
           </a>
         </div>
+
+        {onReplace && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {swapActions.map((action) => (
+              <button
+                key={action.key}
+                onClick={() => onReplace(product, action.key)}
+                disabled={isSwapping}
+                className="rounded-full border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] transition-colors hover:border-[#E8A94A]/40 hover:text-[var(--text)] disabled:opacity-40"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
