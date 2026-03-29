@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Script from 'next/script'
 import { ArrowRight, MessageSquare, Camera, Shirt, Send, Mic } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 
@@ -252,6 +253,8 @@ export default function HomePage() {
         {/* Live input — the entry point */}
         <div className="relative z-10 mb-14">
           <HomepageInput />
+          {/* Sovrn Commerce verification snippet */}
+          <Script src="https://sovrn.co/zs04ts3" strategy="afterInteractive" />
         </div>
 
         {/* Marquee strip */}
