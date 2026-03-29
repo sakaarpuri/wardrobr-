@@ -108,7 +108,7 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
   return (
     <div className="w-full max-w-4xl rounded-[36px] border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(240,235,225,0.82))] p-4 shadow-[0_30px_110px_rgba(15,23,42,0.10)] backdrop-blur-xl sm:p-6">
       <div className="space-y-6">
-        <div className="flex flex-col gap-2 text-left sm:flex-row sm:items-end sm:justify-between">
+        <div className="mx-auto max-w-2xl text-center">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
               Voice-first stylist
@@ -117,7 +117,7 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
               Start with your voice, then refine if you want to.
             </h2>
           </div>
-          <p className="text-xs text-[var(--text-faint)] sm:max-w-[240px] sm:text-right">
+          <p className="mt-3 text-xs text-[var(--text-faint)]">
             The quickest route in is the mic. Typing and photo matching stay here as backup.
           </p>
         </div>
@@ -264,37 +264,37 @@ function ProofBoard() {
   const board = EXAMPLE_BOARDS[1] ?? EXAMPLE_BOARDS[0]
 
   return (
-    <section className="px-6 pb-10">
-      <div className="mx-auto max-w-5xl rounded-[32px] border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] sm:p-6">
-        <div className="flex flex-col gap-3 text-left sm:flex-row sm:items-end sm:justify-between">
-          <div>
+    <section className="px-6 pb-8">
+      <div className="mx-auto max-w-4xl rounded-[32px] border border-[var(--border)] bg-[var(--bg-card)] p-4 shadow-[0_20px_70px_rgba(15,23,42,0.07)] sm:p-5">
+        <div className="flex flex-col gap-2 text-left sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-md">
             <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-faint)]">What you&apos;ll get</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)]">Your look, ready to shop.</h2>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl">Your look, ready to shop.</h2>
           </div>
-          <p className="max-w-lg text-sm leading-relaxed text-[var(--text-muted)]">
+          <p className="max-w-sm text-sm leading-relaxed text-[var(--text-muted)]">
             The result is a real board with product cards, live prices, store links, and a total, not a vague moodboard.
           </p>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4 sm:p-5">
-            <div className="grid grid-cols-2 gap-3">
+        <div className="mt-5 grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-subtle)] p-3 sm:p-4">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {board.board.products.slice(0, 4).map((product) => (
-                <div key={product.id} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)]">
+                <div key={product.id} className="overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--bg-card)]">
                   <div className="relative aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)]">
                     <Image
                       src={product.imageUrl}
                       alt={product.name}
                       fill
-                      sizes="(max-width: 768px) 50vw, 25vw"
+                      sizes="(max-width: 768px) 45vw, 20vw"
                       className="object-cover"
                     />
                   </div>
-                  <div className="space-y-1 p-3">
+                  <div className="space-y-1 p-2.5">
                     <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-faint)]">{product.brand}</p>
-                    <p className="line-clamp-2 text-xs font-medium leading-snug text-[var(--text)]">{product.name}</p>
+                    <p className="line-clamp-2 text-[11px] font-medium leading-snug text-[var(--text)]">{product.name}</p>
                     <div className="flex items-center justify-between pt-1">
-                      <span className="text-xs font-semibold text-[var(--text)]">{formatPrice(product.price)}</span>
+                      <span className="text-[11px] font-semibold text-[var(--text)]">{formatPrice(product.price)}</span>
                       <span className="text-[10px] text-[var(--text-faint)]">Shop</span>
                     </div>
                   </div>
@@ -303,21 +303,21 @@ function ProofBoard() {
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-[var(--border)] bg-[linear-gradient(145deg,rgba(82,126,255,0.10),rgba(255,255,255,0.85))] p-5">
+          <div className="rounded-[24px] border border-[var(--border)] bg-[linear-gradient(145deg,rgba(82,126,255,0.10),rgba(255,255,255,0.85))] p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">Example result</p>
-            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)]">{board.title}</h3>
+            <h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--text)]">{board.title}</h3>
             <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">{board.board.styleNote}</p>
 
-            <div className="mt-5 space-y-3 text-sm">
-              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-4 py-3">
+            <div className="mt-4 space-y-2.5 text-sm">
+              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-3.5 py-2.5">
                 <span className="text-[var(--text-muted)]">Stores</span>
                 <span className="font-medium text-[var(--text)]">ASOS, Zara, H&amp;M, more</span>
               </div>
-              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-4 py-3">
+              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-3.5 py-2.5">
                 <span className="text-[var(--text-muted)]">Pieces</span>
                 <span className="font-medium text-[var(--text)]">{board.board.products.length} shoppable picks</span>
               </div>
-              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-4 py-3">
+              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-3.5 py-2.5">
                 <span className="text-[var(--text-muted)]">Total</span>
                 <span className="font-medium text-[var(--text)]">{formatPrice(board.board.totalPrice ?? 0)}</span>
               </div>
@@ -325,7 +325,7 @@ function ProofBoard() {
 
             <Link
               href={`/board/${board.id}`}
-              className="mt-5 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2 text-sm text-[var(--text)] transition-colors hover:border-[#E8A94A]/40"
+              className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2 text-sm text-[var(--text)] transition-colors hover:border-[#E8A94A]/40"
             >
               See exact example board
               <Sparkles className="h-4 w-4 text-[#E8A94A]" />
@@ -437,7 +437,7 @@ export default function HomePage() {
           }}
         />
 
-        <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center">
+        <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center">
           <div className="max-w-3xl">
             <p className="mb-4 text-sm font-medium text-[var(--text-faint)]">Your outfit, sorted.</p>
             <h1 className="text-balance text-4xl font-semibold tracking-tight text-[var(--text)] sm:text-6xl">
@@ -448,7 +448,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-10 w-full">
+          <div className="mt-8 flex w-full justify-center">
             <HomeHero onSubmit={handleSubmit} />
             <Script src="https://sovrn.co/zs04ts3" strategy="afterInteractive" />
           </div>
