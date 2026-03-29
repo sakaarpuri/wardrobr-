@@ -179,12 +179,12 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
           <div className="flex items-center gap-1">
             {/* Open all shop links at once */}
             <button
-              onClick={() => board.products.forEach(p => window.open(p.affiliateUrl || p.productUrl, '_blank'))}
-              className="flex items-center gap-1.5 text-[#E8A94A]/70 hover:text-[#E8A94A] text-xs transition-colors px-2 py-1 rounded-lg hover:bg-[#E8A94A]/8 border border-[#E8A94A]/20 hover:border-[#E8A94A]/40"
-              title="Open all shop pages"
+              onClick={() => board.products.forEach((product) => window.open(product.affiliateUrl || product.productUrl, '_blank', 'noopener,noreferrer'))}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#E8A94A]/28 bg-[#E8A94A]/10 px-3 py-1.5 text-xs font-medium text-[#E8A94A] transition-all hover:border-[#E8A94A]/45 hover:bg-[#E8A94A]/14"
+              title="Open results in separate tabs to shop all"
             >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Shop all</span>
+              <ShoppingBag className="h-3.5 w-3.5" />
+              <span>Open results in tabs</span>
             </button>
 
             <button

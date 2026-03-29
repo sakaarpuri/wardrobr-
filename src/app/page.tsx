@@ -10,7 +10,7 @@ import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 import { APP_VERSION } from '@/lib/version'
-import { resolveVoiceLocale } from '@/lib/voice'
+import { useVoiceCapture } from '@/hooks/useVoiceCapture'
 
 const SPOKEN_PROMPTS = [
   'I need a night out look, under sixty quid',
@@ -60,10 +60,19 @@ function formatPrice(value: number) {
 
 function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => void }) {
   const [text, setText] = useState('')
-  const [isListening, setIsListening] = useState(false)
   const [showTypedFallback, setShowTypedFallback] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { occasionContext } = useChatStore()
+
+  const { voiceState, transcript, isSupported, startListening, stopListening, cancelListening } = useVoiceCapture({
+    onTranscript: async (nextTranscript) => {
+      setText(nextTranscript)
+      onSubmit(nextTranscript)
+    },
+  })
+
+  const isListening = voiceState === 'listening'
+  const isProcessing = voiceState === 'processing'
+  const hasVoiceError = voiceState === 'error'
 
   const handleSend = () => onSubmit(text)
 
@@ -87,27 +96,13 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
   }
 
   const handleMic = () => {
-    const SR = (window as typeof window & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition
-      ?? (window as typeof window & { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition
-    if (!SR) return
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const recognition = new (SR as any)()
-    recognition.lang = resolveVoiceLocale({
-      browserLanguages: navigator.languages,
-      hints: [text, occasionContext],
-    })
-    recognition.interimResults = false
-    setIsListening(true)
-    recognition.onresult = (e: { results: { [key: number]: { [key: number]: { transcript: string } } } }) => {
-      const transcript = e.results[0][0].transcript
-      setText(transcript)
-      setIsListening(false)
-      onSubmit(transcript)
+    if (!isSupported) return
+    if (isListening) {
+      stopListening()
+      return
     }
-    recognition.onerror = () => setIsListening(false)
-    recognition.onend = () => setIsListening(false)
-    recognition.start()
+    if (isProcessing) return
+    startListening()
   }
 
   return (
@@ -131,11 +126,12 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
 
         <button
           onClick={handleMic}
+          disabled={!isSupported || isProcessing}
           className={`relative w-full overflow-hidden rounded-[32px] border px-5 py-6 text-center transition-all sm:px-8 sm:py-8 ${
             isListening
               ? 'border-[#E8A94A]/60 bg-[linear-gradient(135deg,rgba(232,169,74,0.20),rgba(120,215,255,0.14))] shadow-[0_24px_70px_rgba(74,144,226,0.18)]'
               : 'border-[rgba(72,134,255,0.20)] bg-[linear-gradient(135deg,rgba(82,126,255,0.18),rgba(104,220,255,0.14),rgba(255,255,255,0.24))] hover:border-[rgba(72,134,255,0.34)] hover:shadow-[0_24px_80px_rgba(49,98,255,0.14)]'
-          }`}
+          } ${isProcessing ? 'cursor-wait opacity-80' : ''}`}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,215,255,0.24),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(255,211,144,0.20),transparent_36%)]" />
           <div className="relative flex flex-col items-center gap-4">
@@ -145,16 +141,40 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
             </div>
             <div>
               <p className="text-2xl font-semibold tracking-tight text-[var(--text)]">
-                {isListening ? 'Listening now...' : 'Tap to talk to your stylist'}
+                {isListening ? 'Recording now...' : isProcessing ? 'Turning your voice into a brief...' : 'Tap to talk to your stylist'}
               </p>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
                 {isListening
-                  ? 'Try saying your size, budget, or a brand, like “size 10, something with a Row vibe, under two-fifty”.'
+                  ? 'Speak naturally in any language, then tap again to finish.'
+                  : isProcessing
+                  ? 'Gemini is transcribing the clip before we start shopping.'
                   : 'Say the trip, event, vibe, or one item you need. The mic is the main way in.'}
               </p>
             </div>
           </div>
         </button>
+
+        {(isListening || isProcessing || hasVoiceError) && (
+          <div className="rounded-[22px] border border-[var(--border)] bg-white/70 px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-[var(--text)]">
+                {isListening ? 'Tap again when you are done' : isProcessing ? 'Transcribing now' : 'Voice issue'}
+              </p>
+              {isListening && (
+                <button
+                  type="button"
+                  onClick={cancelListening}
+                  className="rounded-full border border-[var(--border)] bg-white/80 px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+            <p className="mt-2 text-[14px] leading-relaxed text-[var(--text-muted)]">
+              {transcript || (hasVoiceError ? 'We could not transcribe that clip cleanly. Try again with a short clear brief.' : 'You can speak in the language that feels natural to you.')}
+            </p>
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="hidden rounded-[28px] border border-[var(--border)] bg-white/72 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm sm:block sm:px-5">

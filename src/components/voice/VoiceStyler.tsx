@@ -1,90 +1,29 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useCallback, useState } from 'react'
 import { Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ClarificationPrompt, Product } from '@/lib/types'
-import { resolveVoiceLocale } from '@/lib/voice'
-
-type VoiceState = 'idle' | 'listening' | 'processing' | 'error'
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => SpeechRecognition
-    webkitSpeechRecognition?: new () => SpeechRecognition
-  }
-  interface SpeechRecognition extends EventTarget {
-    continuous: boolean
-    interimResults: boolean
-    lang: string
-    start(): void
-    stop(): void
-    abort(): void
-    onresult: ((e: SpeechRecognitionEvent) => void) | null
-    onerror: ((e: SpeechRecognitionErrorEvent) => void) | null
-    onend: (() => void) | null
-  }
-  interface SpeechRecognitionEvent extends Event {
-    results: SpeechRecognitionResultList
-  }
-  interface SpeechRecognitionResultList {
-    readonly length: number
-    item(index: number): SpeechRecognitionResult
-    [index: number]: SpeechRecognitionResult
-  }
-  interface SpeechRecognitionResult {
-    readonly isFinal: boolean
-    readonly length: number
-    item(index: number): SpeechRecognitionAlternative
-    [index: number]: SpeechRecognitionAlternative
-  }
-  interface SpeechRecognitionAlternative {
-    readonly transcript: string
-    readonly confidence: number
-  }
-  interface SpeechRecognitionErrorEvent extends Event {
-    readonly error: string
-  }
-}
+import { useVoiceCapture } from '@/hooks/useVoiceCapture'
 
 export function VoiceStyler({ compact = false }: { compact?: boolean }) {
-  const [voiceState, setVoiceState] = useState<VoiceState>('idle')
-  const [transcript, setTranscript] = useState('')
   const [typedPrompt, setTypedPrompt] = useState('')
   const [showTypedInput, setShowTypedInput] = useState(false)
-  const [isSupported, setIsSupported] = useState(true)
-
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
-  const finalTranscriptRef = useRef('')
 
   const {
     addMessage,
     setLoading,
     setCurrentBoard,
     setOccasionContext,
-    occasionContext,
-    messages,
     userProfile,
   } = useChatStore()
 
-  useEffect(() => {
-    const supported = !!(window.SpeechRecognition ?? window.webkitSpeechRecognition)
-    setIsSupported(supported)
-  }, [])
-
-  const stopListening = useCallback(() => {
-    recognitionRef.current?.stop()
-    recognitionRef.current = null
-  }, [])
-
   const runStyleRequest = useCallback(async (text: string) => {
     if (!text.trim()) {
-      setVoiceState('idle')
       return
     }
 
     setOccasionContext(text)
-    setVoiceState('processing')
 
     addMessage({ type: 'user_text', content: text })
     const loadingMsg = addMessage({ type: 'system_loading', content: 'Styling your look…' })
@@ -191,96 +130,24 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
       })
     } finally {
       setLoading(false)
-      setVoiceState('idle')
-      setTranscript('')
-      finalTranscriptRef.current = ''
     }
   }, [addMessage, setCurrentBoard, setLoading, setOccasionContext, userProfile])
 
-  const submitNow = useCallback(() => {
-    const text = finalTranscriptRef.current.trim()
-    stopListening()
-    if (text) runStyleRequest(text)
-    else {
-      setVoiceState('idle')
-      setTranscript('')
-    }
-  }, [runStyleRequest, stopListening])
-
-  const startListening = useCallback(() => {
-    const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition
-    if (!SR) {
-      setIsSupported(false)
-      return
-    }
-
-    const recognition = new SR()
-    recognition.continuous = false
-    recognition.interimResults = true
-    recognition.lang = resolveVoiceLocale({
-      browserLanguages: navigator.languages,
-      hints: [
-        typedPrompt,
-        occasionContext,
-        ...messages.slice(-4).map((message) => message.content),
-      ],
-    })
-    recognitionRef.current = recognition
-    finalTranscriptRef.current = ''
-
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
-      let interim = ''
-      let final = ''
-      for (let i = 0; i < e.results.length; i++) {
-        const result = e.results[i]
-        if (result.isFinal) final += result[0].transcript
-        else interim += result[0].transcript
-      }
-      if (final) finalTranscriptRef.current = final
-      setTranscript(final || interim)
-    }
-
-    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-      if (e.error !== 'no-speech') setVoiceState('error')
-    }
-
-    recognition.onend = () => {
-      const text = finalTranscriptRef.current.trim()
-      if (text) runStyleRequest(text)
-      else {
-        setVoiceState('idle')
-        setTranscript('')
-      }
-    }
-
-    try {
-      recognition.start()
-      setVoiceState('listening')
-    } catch {
-      setVoiceState('error')
-    }
-  }, [messages, occasionContext, runStyleRequest, typedPrompt])
-
-  const cancel = useCallback(() => {
-    stopListening()
-    setVoiceState('idle')
-    setTranscript('')
-    finalTranscriptRef.current = ''
-  }, [stopListening])
-
-  useEffect(() => () => { stopListening() }, [stopListening])
+  const { voiceState, transcript, isSupported, startListening, stopListening, cancelListening } = useVoiceCapture({
+    onTranscript: runStyleRequest,
+  })
 
   const submitTypedPrompt = useCallback(() => {
     const text = typedPrompt.trim()
     if (!text) return
     setTypedPrompt('')
-    runStyleRequest(text)
+    void runStyleRequest(text)
   }, [runStyleRequest, typedPrompt])
 
   if (!isSupported) {
     return (
       <div className={`rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)] ${compact ? 'p-4' : 'p-5'}`}>
-        <p className="text-sm font-semibold text-[var(--text)]">Voice needs Safari or Chrome.</p>
+        <p className="text-sm font-semibold text-[var(--text)]">Voice needs mic access in a modern browser.</p>
         <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
           You can still type or upload a photo below.
         </p>
@@ -305,7 +172,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
       {voiceState === 'idle' && (
         <>
           <p className={`mt-3 leading-relaxed text-[var(--text-muted)] ${compact ? 'text-[13px]' : 'text-sm'}`}>
-            Say what to change once the first picks are in, like cheaper, dressier, or more casual.
+            Record a short tweak in the language that feels natural to you, like cheaper, dressier, or more casual.
           </p>
           <button
             onClick={startListening}
@@ -316,13 +183,13 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
                 <Mic className="h-5 w-5 text-[var(--text)]" />
               </div>
               <div>
-                <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>Talk through a tweak</p>
+                <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>Record a voice tweak</p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
-                  Tap once, say the change, and we will update the results.
+                  Tap to start, speak naturally, then tap again to finish.
                 </p>
               </div>
             </div>
-            <ArrowIndicator />
+            <ArrowIndicator label="Tap to record" />
           </button>
 
           {!compact && (
@@ -331,7 +198,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
               <div className="flex flex-wrap gap-2">
                 {[
                   'Trip to India in summer',
-                  'Wedding guest look under £150',
+                  'Shaadi guest look under one-fifty',
                   'Find me one great blazer for work',
                 ].map((prompt) => (
                   <span key={prompt} className="rounded-full border border-[var(--border)] bg-white/55 px-3 py-1.5">
@@ -399,7 +266,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
           <div className={`rounded-[24px] border border-white/35 bg-white/68 backdrop-blur-sm ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">
-                {voiceState === 'listening' ? 'Listening...' : voiceState === 'processing' ? 'Processing...' : 'Voice issue'}
+                {voiceState === 'listening' ? 'Recording now...' : voiceState === 'processing' ? 'Transcribing...' : 'Voice issue'}
               </p>
               {voiceState === 'processing' ? (
                 <Loader2 className="h-4 w-4 animate-spin text-[#E8A94A]" />
@@ -408,20 +275,20 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
               )}
             </div>
             <p className="mt-3 min-h-[40px] text-sm leading-relaxed text-[var(--text-muted)]">
-              {transcript || (voiceState === 'processing' ? 'Styling your look…' : 'Waiting for your brief...')}
+              {transcript || (voiceState === 'processing' ? 'Gemini is transcribing the clip before updating the picks…' : 'You can speak naturally in the language you use every day.')}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={cancel}
+              onClick={cancelListening}
               className={`flex items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-white/60 px-4 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)] ${compact ? 'h-10' : 'h-11'}`}
             >
               <X className="h-4 w-4" />
               Cancel
             </button>
             <button
-              onClick={voiceState === 'listening' ? submitNow : undefined}
+              onClick={voiceState === 'listening' ? stopListening : undefined}
               disabled={voiceState === 'processing'}
               className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all ${compact ? 'h-10' : 'h-11'} ${
                 voiceState === 'listening'
@@ -437,7 +304,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
               ) : (
                 <>
                   <Mic className="h-4 w-4" />
-                  Send voice brief
+                  Finish recording
                 </>
               )}
             </button>
@@ -448,10 +315,10 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
   )
 }
 
-function ArrowIndicator() {
+function ArrowIndicator({ label }: { label: string }) {
   return (
     <div className="rounded-full border border-[rgba(82,126,255,0.22)] bg-white/70 px-3 py-1.5 text-xs text-[var(--text)]">
-      Tap to speak
+      {label}
     </div>
   )
 }
