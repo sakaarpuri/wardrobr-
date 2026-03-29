@@ -36,51 +36,120 @@ export async function rewriteAffiliateUrl(originalUrl: string): Promise<string> 
 }
 
 /**
- * Search for products via Skimlinks Product API.
- * Falls back to mock data in development when API keys are not set.
+ * Search for products. Priority:
+ * 1. Skimlinks (if SKIMLINKS_API_KEY set)
+ * 2. SerpApi Google Shopping (if SERPAPI_KEY set)
+ * 3. Mock data (dev fallback)
  */
 export async function searchProducts(params: SearchProductsParams): Promise<ProductSearchResult> {
-  const apiKey = process.env.SKIMLINKS_API_KEY
-  const publisherId = process.env.SKIMLINKS_PUBLISHER_ID
+  const skimlinkKey = process.env.SKIMLINKS_API_KEY
+  const skimlinkPub = process.env.SKIMLINKS_PUBLISHER_ID
+  const serpApiKey = process.env.SERPAPI_KEY
 
-  if (!apiKey || !publisherId) {
-    return getMockProducts(params)
+  // 1. Skimlinks
+  if (skimlinkKey && skimlinkPub) {
+    try {
+      const searchParams = new URLSearchParams({
+        query: params.query,
+        country: 'GB',
+        currency: 'GBP',
+        limit: String(params.limit ?? 5),
+      })
+      if (params.category) searchParams.set('category', params.category)
+      if (params.minPrice) searchParams.set('min_price', String(params.minPrice))
+      if (params.maxPrice) searchParams.set('max_price', String(params.maxPrice))
+      if (params.gender) searchParams.set('gender', params.gender)
+
+      const response = await fetch(`${SKIMLINKS_API_BASE}/products/search?${searchParams}`, {
+        headers: {
+          'X-Skimlinks-API-Key': skimlinkKey,
+          'X-Skimlinks-Publisher-ID': skimlinkPub,
+        },
+        next: { revalidate: 300 },
+      })
+      if (!response.ok) throw new Error(`Skimlinks ${response.status}`)
+      const data = await response.json()
+      const products = await Promise.all(
+        (data.products || []).map(async (item: SkimlinkProduct) => mapSkimlinkProduct(item, skimlinkPub))
+      )
+      return { products, total: data.total ?? products.length, query: params.query }
+    } catch (error) {
+      console.error('Skimlinks error, falling through:', error)
+    }
   }
 
+  // 2. SerpApi Google Shopping
+  if (serpApiKey) {
+    return searchViaSerpApi(params, serpApiKey)
+  }
+
+  // 3. Mock data
+  return getMockProducts(params)
+}
+
+// ─── SerpApi Google Shopping ──────────────────────────────────────────────────
+
+interface SerpApiShoppingResult {
+  position: number
+  title: string
+  link: string
+  source: string
+  price?: string
+  extracted_price?: number
+  thumbnail?: string
+  serpapi_product_api_comparisons?: string
+}
+
+async function searchViaSerpApi(params: SearchProductsParams, apiKey: string): Promise<ProductSearchResult> {
   try {
+    // Build a focused query: include budget hint if price range given
+    let q = params.query
+    if (params.maxPrice) q += ` under £${params.maxPrice}`
+    if (params.gender) q = `${params.gender === 'men' ? "men's" : "women's"} ${q}`
+
     const searchParams = new URLSearchParams({
-      query: params.query,
-      country: 'GB',
-      currency: 'GBP',
-      limit: String(params.limit ?? 5),
+      engine: 'google_shopping',
+      q,
+      gl: 'gb',
+      hl: 'en',
+      num: String(Math.min((params.limit ?? 5) * 2, 20)), // fetch extra, filter down
+      api_key: apiKey,
     })
+    if (params.minPrice) searchParams.set('price_min', String(params.minPrice))
+    if (params.maxPrice) searchParams.set('price_max', String(params.maxPrice))
 
-    if (params.category) searchParams.set('category', params.category)
-    if (params.minPrice) searchParams.set('min_price', String(params.minPrice))
-    if (params.maxPrice) searchParams.set('max_price', String(params.maxPrice))
-    if (params.gender) searchParams.set('gender', params.gender)
-
-    const response = await fetch(`${SKIMLINKS_API_BASE}/products/search?${searchParams}`, {
-      headers: {
-        'X-Skimlinks-API-Key': apiKey,
-        'X-Skimlinks-Publisher-ID': publisherId,
-      },
-      next: { revalidate: 300 }, // Cache for 5 minutes
+    const res = await fetch(`https://serpapi.com/search?${searchParams}`, {
+      next: { revalidate: 300 },
     })
+    if (!res.ok) throw new Error(`SerpApi ${res.status}`)
 
-    if (!response.ok) {
-      console.error('Skimlinks API error:', response.status)
-      return getMockProducts(params)
-    }
+    const data = await res.json()
+    const raw: SerpApiShoppingResult[] = data.shopping_results ?? []
 
-    const data = await response.json()
-    const products = await Promise.all(
-      (data.products || []).map(async (item: SkimlinkProduct) => mapSkimlinkProduct(item, publisherId))
+    const products: Product[] = await Promise.all(
+      raw
+        .filter(r => r.thumbnail && r.extracted_price)
+        .slice(0, params.limit ?? 5)
+        .map(async (r, i) => {
+          const affiliateUrl = await rewriteAffiliateUrl(r.link)
+          return {
+            id: `serp-${i}-${Date.now()}`,
+            name: r.title,
+            brand: r.source,
+            price: r.extracted_price!,
+            currency: 'GBP',
+            imageUrl: r.thumbnail!,
+            productUrl: r.link,
+            affiliateUrl,
+            storeName: r.source,
+            category: params.category ?? 'clothing',
+          }
+        })
     )
 
-    return { products, total: data.total ?? products.length, query: params.query }
+    return { products, total: products.length, query: params.query }
   } catch (error) {
-    console.error('Product search error:', error)
+    console.error('SerpApi error:', error)
     return getMockProducts(params)
   }
 }
