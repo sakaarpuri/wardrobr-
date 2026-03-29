@@ -9,6 +9,7 @@ import { ArrowRight, Camera, Mic, Send } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
+import { APP_VERSION } from '@/lib/version'
 
 const EXAMPLE_PROMPTS = [
   'Trip to India in summer',
@@ -374,7 +375,7 @@ export default function HomePage() {
       </div>
 
       <footer className="flex items-center justify-between border-t border-[var(--border)] px-6 py-4">
-        <span className="text-xs text-[var(--text-faint)]">© 2026 Wardrobr.ai</span>
+        <span className="text-xs text-[var(--text-faint)]">© 2026 Wardrobr.ai · {APP_VERSION}</span>
         <div className="flex items-center gap-4">
           <Link href="/about" className="text-xs text-[var(--text-faint)] transition-colors hover:text-[var(--text-muted)]">About</Link>
           <Link href="/privacy" className="text-xs text-[var(--text-faint)] transition-colors hover:text-[var(--text-muted)]">Privacy</Link>
