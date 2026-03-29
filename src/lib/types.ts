@@ -15,6 +15,7 @@ export interface Product {
   price: number
   currency: string
   imageUrl: string
+  images?: string[]        // additional product photos (carousel)
   productUrl: string
   affiliateUrl: string
   storeName: string

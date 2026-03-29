@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Product } from '@/lib/types'
-import { ExternalLink, RefreshCw } from 'lucide-react'
+import { ExternalLink, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const CATEGORY_STYLES: Record<string, { gradient: string; label: string }> = {
   tops:        { gradient: 'from-stone-800 to-stone-700',   label: 'Top' },
@@ -35,12 +35,31 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps) {
   const [imgFailed, setImgFailed] = useState(false)
+  const [photoIdx, setPhotoIdx] = useState(0)
+
+  const allImages = product.images && product.images.length > 1 ? product.images : [product.imageUrl]
+  const currentImage = allImages[photoIdx]
+  const hasMultiple = allImages.length > 1
+
+  const prev = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setPhotoIdx(i => (i - 1 + allImages.length) % allImages.length)
+    setImgFailed(false)
+  }
+  const next = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setPhotoIdx(i => (i + 1) % allImages.length)
+    setImgFailed(false)
+  }
+
   const formattedPrice = new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: product.currency ?? 'GBP',
   }).format(product.price)
 
-  const showPlaceholder = !product.imageUrl || imgFailed
+  const showPlaceholder = !currentImage || imgFailed
 
   return (
     <div className="group bg-zinc-900 rounded-2xl overflow-hidden border border-white/5 hover:border-white/15 transition-all duration-300">
@@ -50,11 +69,40 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
           <ImagePlaceholder category={product.category} />
         ) : (
           <img
-            src={product.imageUrl}
+            key={currentImage}
+            src={currentImage}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover transition-opacity duration-300"
             onError={() => setImgFailed(true)}
           />
+        )}
+
+        {/* Carousel controls — only when multiple images */}
+        {hasMultiple && !showPlaceholder && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+            >
+              <ChevronLeft className="w-3.5 h-3.5 text-white" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+            >
+              <ChevronRight className="w-3.5 h-3.5 text-white" />
+            </button>
+            {/* Dot indicators */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {allImages.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPhotoIdx(i); setImgFailed(false) }}
+                  className={`w-1 h-1 rounded-full transition-all ${i === photoIdx ? 'bg-white w-2' : 'bg-white/40'}`}
+                />
+              ))}
+            </div>
+          </>
         )}
 
         {/* Replace button — appears on hover */}
@@ -62,7 +110,7 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
           <button
             onClick={() => onReplace(product)}
             disabled={isSwapping}
-            className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/70 text-white/70 hover:text-white text-xs px-2 py-1 rounded-lg border border-white/10 hover:border-white/30 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50 disabled:cursor-wait"
+            className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 text-white/70 hover:text-white text-xs px-2 py-1 rounded-lg border border-white/10 hover:border-white/30 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50 disabled:cursor-wait"
           >
             <RefreshCw className={`w-3 h-3 ${isSwapping ? 'animate-spin' : ''}`} />
             Replace

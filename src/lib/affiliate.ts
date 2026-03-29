@@ -98,6 +98,7 @@ interface SerpApiShoppingResult {
   price?: string
   extracted_price?: number
   thumbnail?: string
+  thumbnails?: string[]  // additional product images
   rating?: number
   reviews?: number
   snippet?: string
@@ -135,13 +136,19 @@ async function searchViaSerpApi(params: SearchProductsParams, apiKey: string): P
         .map(async (r, i) => {
           const productUrl = r.product_link ?? r.link ?? ''
           const affiliateUrl = await rewriteAffiliateUrl(productUrl)
+          // Combine thumbnail + thumbnails array, deduplicate
+          const allImages = [
+            ...(r.thumbnail ? [r.thumbnail] : []),
+            ...(r.thumbnails ?? []),
+          ].filter((img, idx, arr) => arr.indexOf(img) === idx)
           return {
             id: `serp-${i}-${Date.now()}`,
             name: r.title,
             brand: r.source,
             price: r.extracted_price!,
             currency: 'GBP',
-            imageUrl: r.thumbnail!,
+            imageUrl: allImages[0] ?? r.thumbnail!,
+            images: allImages.length > 1 ? allImages : undefined,
             productUrl,
             affiliateUrl,
             storeName: r.source,
