@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ClarificationPrompt, Product } from '@/lib/types'
+import { resolveVoiceLocale } from '@/lib/voice'
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'error'
 
@@ -61,6 +62,8 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
     setLoading,
     setCurrentBoard,
     setOccasionContext,
+    occasionContext,
+    messages,
     userProfile,
   } = useChatStore()
 
@@ -214,7 +217,14 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
     const recognition = new SR()
     recognition.continuous = false
     recognition.interimResults = true
-    recognition.lang = 'en-GB'
+    recognition.lang = resolveVoiceLocale({
+      browserLanguages: navigator.languages,
+      hints: [
+        typedPrompt,
+        occasionContext,
+        ...messages.slice(-4).map((message) => message.content),
+      ],
+    })
     recognitionRef.current = recognition
     finalTranscriptRef.current = ''
 
@@ -249,7 +259,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
     } catch {
       setVoiceState('error')
     }
-  }, [runStyleRequest])
+  }, [messages, occasionContext, runStyleRequest, typedPrompt])
 
   const cancel = useCallback(() => {
     stopListening()

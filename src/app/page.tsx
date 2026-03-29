@@ -10,6 +10,7 @@ import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 import { APP_VERSION } from '@/lib/version'
+import { resolveVoiceLocale } from '@/lib/voice'
 
 const SPOKEN_PROMPTS = [
   'I need a night out look, under sixty quid',
@@ -62,6 +63,7 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
   const [isListening, setIsListening] = useState(false)
   const [showTypedFallback, setShowTypedFallback] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { occasionContext } = useChatStore()
 
   const handleSend = () => onSubmit(text)
 
@@ -91,7 +93,10 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new (SR as any)()
-    recognition.lang = 'en-GB'
+    recognition.lang = resolveVoiceLocale({
+      browserLanguages: navigator.languages,
+      hints: [text, occasionContext],
+    })
     recognition.interimResults = false
     setIsListening(true)
     recognition.onresult = (e: { results: { [key: number]: { [key: number]: { transcript: string } } } }) => {
