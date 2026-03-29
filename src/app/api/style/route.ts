@@ -6,6 +6,9 @@ import { routeRequest } from '@/lib/gemini-router'
 import { Product, OutfitBoard } from '@/lib/types'
 import crypto from 'crypto'
 
+// Allow up to 60s on Vercel (Pro) — Gemini agentic loop can take 15-25s
+export const maxDuration = 60
+
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB base64 ~ 7.5 MB decoded
 const MAX_HISTORY_TURNS = 20
 
