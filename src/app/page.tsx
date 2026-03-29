@@ -1,28 +1,36 @@
 'use client'
 
+import Image from 'next/image'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Script from 'next/script'
-import { ArrowRight, Camera, Send, Mic } from 'lucide-react'
+import { ArrowRight, Camera, Mic, Send } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { BUDGET_OPTIONS, MISSION_OPTIONS, SIZE_OPTIONS } from '@/lib/shopper'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 
-const MARQUEE_ITEMS = [
-  'Summer Wedding', 'Job Interview', 'First Date', 'Weekend Brunch',
-  'Gallery Opening', 'Garden Party', 'Business Casual', 'Holiday Capsule',
-  'Night Out', 'Country Weekend', 'Cocktail Party', 'Festival Season',
-  'City Break', 'Ski Holiday', 'Dinner Party', 'Graduation Day',
-]
-
 const EXAMPLE_PROMPTS = [
   'Night out, under £60',
   'Summer wedding, £150 max',
   'New job, smart casual',
-  'Holiday looks, ASOS budget',
+  'Travel capsule for Las Palmas',
 ]
+
+const TRUST_POINTS = [
+  'Mission first, not a long form',
+  'Live product picks from UK stores',
+  'Direct retailer links when available',
+]
+
+function formatPrice(value: number) {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+  }).format(value)
+}
 
 // ─── Homepage input component ─────────────────────────────────────────────────
 
@@ -79,133 +87,171 @@ function HomepageInput() {
   }
 
   return (
-    <div className="w-full max-w-3xl space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {MISSION_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            onClick={() => setUserProfile({ mission: userProfile.mission === option.value ? null : option.value })}
-            className={`rounded-2xl border p-4 text-left transition-all ${
-              userProfile.mission === option.value
-                ? 'border-[#E8A94A]/55 bg-[#E8A94A]/10 shadow-[0_0_0_1px_rgba(232,169,74,0.08)]'
-                : 'border-[var(--border)] bg-[var(--bg-subtle)] hover:border-[#E8A94A]/30 hover:bg-[var(--bg-card)]'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[var(--text)] text-sm font-semibold">{option.title}</p>
-                <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">{option.body}</p>
-              </div>
-              <span className="font-display italic text-3xl leading-none text-[#E8A94A]/60">{option.label}</span>
+    <div className="w-full max-w-4xl rounded-[32px] border border-[var(--border)] bg-[var(--bg-card)] p-4 shadow-[0_26px_90px_rgba(26,14,0,0.08)] sm:p-6">
+      <div className="space-y-5">
+        <div className="space-y-2 text-left">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
+            Start Here
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl">
+                Pick the route in, then describe what you need.
+              </h2>
+              <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
+                Keep it loose if you want. Event, trip, vibe, or one item you need to buy, that is enough to get moving.
+              </p>
             </div>
-          </button>
-        ))}
-      </div>
-
-      {/* Main input */}
-      <div className="flex items-end gap-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-2xl px-4 py-3.5 focus-within:border-[#E8A94A]/60 transition-colors shadow-lg shadow-black/40">
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder="What are you shopping for? Try: wedding guest look, hero blazer for work, or style these trainers."
-          rows={1}
-          className="flex-1 bg-transparent text-[var(--text)] text-sm placeholder-[var(--text-muted)] resize-none outline-none leading-relaxed max-h-28 overflow-y-auto"
-          style={{ scrollbarWidth: 'none' }}
-        />
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            title="Upload a photo"
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)] transition-colors"
-          >
-            <Camera className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleMic}
-            title="Speak your request"
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-              isListening ? 'bg-[var(--border)] text-[var(--text)] animate-pulse' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
-            }`}
-          >
-            <Mic className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={!text.trim()}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-              text.trim() ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]' : 'text-[var(--text-faint)] cursor-not-allowed'
-            }`}
-          >
-            <Send className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[var(--text)] text-xs font-semibold uppercase tracking-[0.25em]">Budget</p>
-            <span className="text-[var(--text-faint)] text-[11px]">Optional</span>
+            <p className="text-xs text-[var(--text-faint)] sm:text-right">
+              Optional filters stay light until results.
+            </p>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {BUDGET_OPTIONS.map((budget) => (
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {MISSION_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setUserProfile({ mission: userProfile.mission === option.value ? null : option.value })}
+              className={`rounded-2xl border p-3.5 text-left transition-all ${
+                userProfile.mission === option.value
+                  ? 'border-[#E8A94A]/55 bg-[#E8A94A]/10 shadow-[0_0_0_1px_rgba(232,169,74,0.08)]'
+                  : 'border-[var(--border)] bg-[var(--bg-subtle)] hover:border-[#E8A94A]/30 hover:bg-[var(--bg)]'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text)]">{option.title}</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">{option.body}</p>
+                </div>
+                <span className="font-display italic text-2xl leading-none text-[#E8A94A]/60">{option.label}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-input)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] sm:px-5 sm:py-5">
+          <div className="flex flex-col gap-4">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder="What are you shopping for? Try: travel to Las Palmas next week, hero blazer for work, or style these trainers."
+              rows={2}
+              className="min-h-[72px] flex-1 bg-transparent text-[15px] text-[var(--text)] placeholder-[var(--text-muted)] resize-none outline-none leading-relaxed"
+              style={{ scrollbarWidth: 'none' }}
+            />
+
+            <div className="flex flex-col gap-3 border-t border-[var(--border)] pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-1.5">
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload a photo"
+                  className="h-9 rounded-xl px-3 text-sm flex items-center justify-center gap-2 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-colors"
+                >
+                  <Camera className="w-4 h-4" />
+                  Photo
+                </button>
+                <button
+                  onClick={handleMic}
+                  title="Speak your request"
+                  className={`h-9 rounded-xl px-3 text-sm flex items-center justify-center gap-2 transition-colors ${
+                    isListening ? 'bg-[var(--bg-subtle)] text-[var(--text)] animate-pulse' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)]'
+                  }`}
+                >
+                  <Mic className="w-4 h-4" />
+                  Speak
+                </button>
+              </div>
+
               <button
-                key={budget}
-                onClick={() => setUserProfile({ budget: userProfile.budget === budget ? null : budget })}
-                className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
-                  userProfile.budget === budget
-                    ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
-                    : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
+                onClick={handleSend}
+                disabled={!text.trim()}
+                className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-all ${
+                  text.trim() ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]' : 'bg-[var(--bg-subtle)] text-[var(--text-faint)] cursor-not-allowed'
                 }`}
               >
-                {budget}
+                See my picks
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="lg:max-w-[190px]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
+                Tighten The Search
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-muted)]">
+                Add these now if they matter, or skip and refine on results.
+              </p>
+            </div>
+
+            <div className="flex-1 space-y-4">
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text)]">Budget</p>
+                  <span className="text-[11px] text-[var(--text-faint)]">Optional</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {BUDGET_OPTIONS.map((budget) => (
+                    <button
+                      key={budget}
+                      onClick={() => setUserProfile({ budget: userProfile.budget === budget ? null : budget })}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                        userProfile.budget === budget
+                          ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
+                          : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
+                      }`}
+                    >
+                      {budget}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text)]">Size</p>
+                  <span className="text-[11px] text-[var(--text-faint)]">Optional</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {SIZE_OPTIONS.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setUserProfile({ size: userProfile.size === size ? null : size })}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                        userProfile.size === size
+                          ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
+                          : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLE_PROMPTS.map((p) => (
+              <button
+                key={p}
+                onClick={() => submit(p)}
+                className="rounded-full border border-[var(--border)] bg-[var(--bg)] px-3.5 py-1.5 text-xs text-[var(--text-muted)] transition-all hover:border-[#E8A94A]/50 hover:text-[#E8A94A] hover:bg-[#E8A94A]/5"
+              >
+                {p}
               </button>
             ))}
           </div>
         </div>
-
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[var(--text)] text-xs font-semibold uppercase tracking-[0.25em]">Size</p>
-            <span className="text-[var(--text-faint)] text-[11px]">Optional</span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {SIZE_OPTIONS.map((size) => (
-              <button
-                key={size}
-                onClick={() => setUserProfile({ size: userProfile.size === size ? null : size })}
-                className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
-                  userProfile.size === size
-                    ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
-                    : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
-                }`}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
-
-      {/* Example prompts */}
-      <div className="flex flex-wrap gap-2 mt-3 justify-center">
-        {EXAMPLE_PROMPTS.map((p) => (
-          <button
-            key={p}
-            onClick={() => submit(p)}
-            className="text-xs text-[var(--text-muted)] border border-[var(--border)] rounded-full px-3.5 py-1.5 hover:border-[#E8A94A]/50 hover:text-[#E8A94A] hover:bg-[#E8A94A]/5 transition-all"
-          >
-            {p}
-          </button>
-        ))}
-      </div>
-
-      {/* Feature hints */}
-      <p className="text-[var(--text-faint)] text-xs text-center mt-4 leading-relaxed">
-        We&apos;ll carry your mission, budget, and size into the results page, then tighten the picks from there.
-      </p>
     </div>
   )
 }
@@ -213,8 +259,6 @@ function HomepageInput() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const marqueeText = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS]
-
   return (
     <div className="min-h-screen bg-[var(--bg)] flex flex-col overflow-hidden">
 
@@ -230,7 +274,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero */}
-      <main className="relative flex-1 flex flex-col items-center justify-center px-6 pt-20 pb-16 text-center">
+      <main className="relative flex-1 px-6 pt-14 pb-14 text-center sm:pt-18">
 
         {/* Dot grid */}
         <div
@@ -254,105 +298,102 @@ export default function HomePage() {
           }}
         />
 
-        {/* Headline */}
-        <div className="relative z-10 mb-6">
-          <p className="text-[var(--text-faint)] text-xs uppercase tracking-[0.35em] font-medium mb-5">
-            Free · No signup · UK stores
-          </p>
-          <h1 className="leading-none mb-3">
-            <span className="block text-[var(--text-muted)] font-sans font-light text-3xl sm:text-4xl tracking-tight mb-1">
-              Your outfit,
-            </span>
-            <span
-              className="font-display italic font-medium text-[var(--text)]"
-              style={{ fontSize: 'clamp(5rem, 14vw, 10rem)', lineHeight: 1 }}
-            >
-              sorted.
-            </span>
-          </h1>
-          <p className="font-display italic text-[var(--text-muted)] text-xl sm:text-2xl mt-3">
-            start fast. refine with confidence.
-          </p>
-        </div>
-
-        <p className="relative z-10 text-[var(--text-muted)] text-sm max-w-md leading-relaxed mb-8">
-          Start with the shopping mission, add a budget or size if you want tighter picks, and we&apos;ll take you straight into live product results from UK stores.
-        </p>
-
-        {/* Live input — the entry point */}
-        <div className="relative z-10 mb-14">
-          <HomepageInput />
-          {/* Sovrn Commerce verification snippet */}
-          <Script src="https://sovrn.co/zs04ts3" strategy="afterInteractive" />
-        </div>
-
-        {/* Marquee strip */}
-        <div className="relative z-10 w-screen -mx-6 border-y border-[var(--border)] py-3 overflow-hidden mb-14">
-          <div className="animate-marquee flex gap-8 whitespace-nowrap w-max">
-            {marqueeText.map((item, i) => (
-              <span key={i} className="text-[var(--text-faint)] text-xs uppercase tracking-widest font-medium flex-shrink-0">
-                {item}
-                <span className="mx-4 text-[var(--text-faint)]">·</span>
+        <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center">
+          <div className="max-w-3xl">
+            <p className="mb-5 text-xs font-medium uppercase tracking-[0.35em] text-[var(--text-faint)]">
+              Free · No signup · UK stores
+            </p>
+            <h1 className="leading-none">
+              <span className="mb-2 block font-sans text-3xl font-light tracking-tight text-[var(--text-muted)] sm:text-4xl">
+                Your outfit,
               </span>
-            ))}
+              <span
+                className="font-display italic font-medium text-[var(--text)]"
+                style={{ fontSize: 'clamp(4.5rem, 13vw, 9.5rem)', lineHeight: 0.95 }}
+              >
+                sorted.
+              </span>
+            </h1>
+            <p className="mt-4 font-display text-xl italic text-[var(--text-muted)] sm:text-2xl">
+              One clear start, then sharper picks.
+            </p>
+            <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)] sm:text-[15px]">
+              Tell Wardrobr the trip, event, vibe, or item you need. We&apos;ll take you into live results, ask one smart question only when needed, and keep the path to buying clean.
+            </p>
           </div>
-        </div>
 
-        <div className="relative z-10 w-full max-w-3xl rounded-2xl border border-[#E8A94A]/10 bg-[var(--bg-subtle)] p-5 sm:p-6">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
-              <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-faint)]">Homepage</p>
-              <p className="mt-2 text-sm font-semibold text-[var(--text)]">Capture the brief quickly</p>
-              <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">Mission first, then optional budget and size. No long form up front.</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
-              <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-faint)]">Results</p>
-              <p className="mt-2 text-sm font-semibold text-[var(--text)]">Show the search working</p>
-              <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">Status updates, live product discovery, then a tighter board with budget context.</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
-              <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-faint)]">Shop</p>
-              <p className="mt-2 text-sm font-semibold text-[var(--text)]">Go to the retailer</p>
-              <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">When we can resolve a merchant PDP, the shop action now goes there instead of a Google wrapper.</p>
-            </div>
+          <div className="mt-10 w-full">
+            <HomepageInput />
+            <Script src="https://sovrn.co/zs04ts3" strategy="afterInteractive" />
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+            {TRUST_POINTS.map((point) => (
+              <div
+                key={point}
+                className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2 text-xs text-[var(--text-muted)] shadow-[0_10px_35px_rgba(26,14,0,0.04)]"
+              >
+                {point}
+              </div>
+            ))}
           </div>
         </div>
       </main>
 
       {/* Exact example looks */}
-      <div className="flex items-center gap-4 px-6 py-8 max-w-4xl mx-auto w-full">
-        <div className="flex-1 h-px bg-[var(--border)]" />
-        <span className="text-[var(--text-faint)] text-xs uppercase tracking-widest">Exact example looks</span>
-        <div className="flex-1 h-px bg-[var(--border)]" />
-      </div>
-
       <section className="px-6 pb-20">
-        <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-4">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-8 flex flex-col gap-3 text-left sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-faint)]">Exact example looks</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)]">See what “sorted” looks like.</h2>
+            </div>
+            <p className="max-w-lg text-sm leading-relaxed text-[var(--text-muted)]">
+              These open exact saved boards, with total price and direct retailer links where available.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-3">
           {EXAMPLE_BOARDS.map((board) => (
             <Link
               key={board.title}
               href={`/board/${board.id}`}
-              className="group bg-[var(--bg-card)] border border-[var(--border)] hover:border-[#E8A94A]/25 rounded-2xl p-5 transition-all text-left w-full"
+              className="group w-full overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)] text-left transition-all hover:border-[#E8A94A]/25 hover:shadow-[0_24px_70px_rgba(26,14,0,0.08)]"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <p className="text-[var(--text-faint)] text-[10px] uppercase tracking-[0.25em]">{board.kicker}</p>
-                  <h3 className="mt-1 text-[var(--text)] text-sm font-semibold">{board.title}</h3>
+              <div className="relative aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)]">
+                <Image
+                  src={board.board.products[0]?.imageUrl}
+                  alt={board.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                <div className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/25 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/85 backdrop-blur-sm">
+                  {board.kicker}
                 </div>
-                <ArrowRight className="w-3.5 h-3.5 text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors mt-0.5 flex-shrink-0" />
+                <div className="absolute inset-x-4 bottom-4">
+                  <h3 className="text-xl font-semibold tracking-tight text-white">{board.title}</h3>
+                  <p className="mt-1 text-sm text-white/80">
+                    {board.board.products.length}-piece look · {formatPrice(board.board.totalPrice ?? 0)}
+                  </p>
+                </div>
               </div>
-              <ul className="space-y-2">
-                {board.board.products.map((product) => (
-                  <li key={product.id} className="text-[var(--text-muted)] text-xs leading-snug">
-                    {product.name} · {product.brand} · £{product.price}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                <span className="text-[var(--text-faint)] text-xs font-display italic">Shop this exact look →</span>
+
+              <div className="p-5">
+                <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+                  {board.board.styleNote}
+                </p>
+                <div className="mt-4 flex items-center justify-between border-t border-[var(--border)] pt-4">
+                  <span className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--text-faint)]">
+                    Shop this exact look
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-[var(--text-faint)] transition-colors group-hover:text-[var(--text)]" />
+                </div>
               </div>
             </Link>
           ))}
+          </div>
         </div>
       </section>
 

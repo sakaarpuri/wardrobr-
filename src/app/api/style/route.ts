@@ -347,6 +347,11 @@ function getClarificationQuestion(
   const wordCount = text.split(/\s+/).filter(Boolean).length
   const hasOccasion = /(wedding|interview|job|office|party|date|holiday|trip|brunch|festival|graduation|work|weekend|ceremony)/.test(text)
   const hasCategory = /(dress|blazer|jacket|coat|trousers|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit)/.test(text)
+  const travelClarification = getTravelClarification(message)
+
+  if (travelClarification) {
+    return travelClarification
+  }
 
   if (!profile.mission && wordCount <= 4 && !hasOccasion && !hasCategory) {
     return 'Are you after one key item or a full look?'
@@ -357,6 +362,44 @@ function getClarificationQuestion(
   }
 
   return null
+}
+
+function getTravelClarification(message: string) {
+  const text = message.trim().toLowerCase()
+  const isTravelRequest = /(travel|trip|holiday|vacation|heading to|going to|flying to|city break|weekend away|packing)/.test(text)
+
+  if (!isTravelRequest) {
+    return null
+  }
+
+  const destinationMatch = message.match(/(?:travel|heading|going|flying|trip|holiday)\s+(?:to|for|in)\s+(.+?)(?:\s+(next week|this weekend|next month|tomorrow|soon)\b|$)/i)
+  const timingMatch = message.match(/\b(next week|this weekend|next month|tomorrow|soon)\b/i)
+  const destination = destinationMatch?.[1]?.replace(/[,.!?]+$/g, '').trim()
+  const timing = timingMatch?.[1]?.toLowerCase() ?? null
+  const warmDestination = /(las palmas|la palma|gran canaria|tenerife|mallorca|majorca|ibiza|canary islands|barcelona|lisbon|amalfi|mykonos|athens|nice|miami|dubai)/.test(text)
+
+  if (destination) {
+    const lead = warmDestination
+      ? `Heading to ${toTitleCase(destination)}${timing ? ` ${timing}` : ''}, I’d start with a warm-weather travel capsule.`
+      : `Heading to ${toTitleCase(destination)}${timing ? ` ${timing}` : ''}, I’d start with a travel capsule.`
+    return warmDestination
+      ? `${lead} Is this mainly beach + walking, or do you want a couple of dressier dinner looks too?`
+      : `${lead} Is this mainly daytime exploring, or do you want a couple of dressier dinner looks too?`
+  }
+
+  if (warmDestination) {
+    return 'I’d start with a warm-weather travel capsule. Is this mainly beach + walking, or do you want a couple of dressier dinner looks too?'
+  }
+
+  return 'I’d start with a travel capsule for the trip. Is this mainly daytime exploring, or do you want a couple of dressier dinner looks too?'
+}
+
+function toTitleCase(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
 }
 
 function buildBoardWarnings(
