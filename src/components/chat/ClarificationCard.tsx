@@ -32,7 +32,7 @@ export function ClarificationCard({ clarification, onSelect }: ClarificationCard
                   type="button"
                   disabled={clarification.isSubmitting}
                   onClick={() => onSelect(group.id, option.id)}
-                  className={`rounded-full border px-3 py-2 text-left text-xs transition-all ${
+                  className={`rounded-full border px-3.5 py-2.5 text-left text-sm transition-all sm:px-3 sm:py-2 sm:text-xs ${
                     isSelected
                       ? 'border-[#E8A94A]/65 bg-[#E8A94A]/10 text-[#E8A94A]'
                       : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
@@ -40,7 +40,7 @@ export function ClarificationCard({ clarification, onSelect }: ClarificationCard
                 >
                   <span className="block font-medium">{option.label}</span>
                   {option.helper && (
-                    <span className={`mt-1 block text-[11px] leading-relaxed ${isSelected ? 'text-[#E8A94A]/80' : 'text-[var(--text-faint)]'}`}>
+                    <span className={`mt-1 block text-xs leading-relaxed sm:text-[11px] ${isSelected ? 'text-[#E8A94A]/80' : 'text-[var(--text-faint)]'}`}>
                       {option.helper}
                     </span>
                   )}

@@ -120,23 +120,23 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
       </div>
 
       {/* Product Info */}
-      <div className="p-2 space-y-1.5">
+      <div className="space-y-1.5 p-2.5 sm:p-2">
         <div>
-          <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider font-medium leading-none">
+          <p className="text-[11px] font-medium uppercase leading-none tracking-wider text-[var(--text-muted)] sm:text-[10px]">
             {product.brand}
           </p>
-          <p className="text-[var(--text)] text-xs font-medium leading-tight mt-0.5 line-clamp-2">
+          <p className="mt-0.5 line-clamp-2 text-[13px] font-medium leading-tight text-[var(--text)] sm:text-xs">
             {product.name}
           </p>
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-[var(--text)] font-semibold text-xs">{formattedPrice}</p>
+          <p className="text-sm font-semibold text-[var(--text)] sm:text-xs">{formattedPrice}</p>
           <a
             href={product.affiliateUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 bg-[#E8A94A] text-[#1A0E00] text-[10px] font-semibold px-2 py-1 rounded-md hover:bg-[#f0b85a] transition-colors"
+            className="flex items-center gap-1 rounded-md bg-[#E8A94A] px-2.5 py-1.5 text-[11px] font-semibold text-[#1A0E00] transition-colors hover:bg-[#f0b85a] sm:px-2 sm:py-1 sm:text-[10px]"
             onClick={(e) => e.stopPropagation()}
           >
             Shop

@@ -71,7 +71,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
               <X className="w-3 h-3 text-[var(--text)]" />
             </button>
           </div>
-          <p className="text-[var(--text-muted)] text-xs mt-1">Image ready · add a message or send as-is</p>
+          <p className="mt-1 text-[13px] text-[var(--text-muted)] sm:text-xs">Image ready · add a message or send as-is</p>
         </div>
       )}
 
@@ -81,16 +81,16 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
       )}
 
       {/* Input bar */}
-      <div className="flex items-end gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 transition-colors focus-within:border-[#E8A94A]/60">
+      <div className="flex items-end gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-input)] px-3 py-3 transition-colors focus-within:border-[#E8A94A]/60 sm:py-2.5">
         <button
           onClick={() => setShowImageUpload(!showImageUpload)}
           title="Upload a photo of a look to style"
           className={`
-            flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+            flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors sm:h-8 sm:w-8 sm:rounded-lg
             ${showImageUpload ? 'bg-[var(--border)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'}
           `}
         >
-          <Camera className="w-4 h-4" />
+          <Camera className="h-4 w-4" />
         </button>
 
         <textarea
@@ -100,7 +100,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
           onKeyDown={handleKeyDown}
           placeholder={placeholder ?? 'Describe your style or ask for an outfit...'}
           rows={1}
-          className="max-h-32 flex-1 resize-none bg-transparent text-sm leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)] overflow-y-auto"
+          className="max-h-32 flex-1 resize-none overflow-y-auto bg-transparent text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)] sm:text-sm"
           style={{ scrollbarWidth: 'none' }}
         />
 
@@ -108,7 +108,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
           onClick={handleSend}
           disabled={isLoading || (!text.trim() && !imageBase64)}
           className={`
-            flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all
+            flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-all sm:h-8 sm:w-8 sm:rounded-lg
             ${isLoading || (!text.trim() && !imageBase64)
               ? 'text-[var(--text-faint)] cursor-not-allowed'
               : 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]'

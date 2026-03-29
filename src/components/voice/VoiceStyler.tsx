@@ -46,7 +46,7 @@ declare global {
   }
 }
 
-export function VoiceStyler() {
+export function VoiceStyler({ compact = false }: { compact?: boolean }) {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
   const [transcript, setTranscript] = useState('')
   const [isSupported, setIsSupported] = useState(true)
@@ -260,7 +260,7 @@ export function VoiceStyler() {
 
   if (!isSupported) {
     return (
-      <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)] p-5">
+      <div className={`rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)] ${compact ? 'p-4' : 'p-5'}`}>
         <p className="text-sm font-semibold text-[var(--text)]">Voice needs Safari or Chrome.</p>
         <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
           You can still type or upload a photo below.
@@ -270,13 +270,13 @@ export function VoiceStyler() {
   }
 
   return (
-    <div className="rounded-[30px] border border-[rgba(82,126,255,0.18)] bg-[linear-gradient(135deg,rgba(82,126,255,0.16),rgba(104,220,255,0.12),rgba(255,255,255,0.22))] p-5 shadow-[0_24px_70px_rgba(49,98,255,0.12)] backdrop-blur-xl">
+    <div className={`rounded-[30px] border border-[rgba(82,126,255,0.18)] bg-[linear-gradient(135deg,rgba(82,126,255,0.16),rgba(104,220,255,0.12),rgba(255,255,255,0.22))] shadow-[0_24px_70px_rgba(49,98,255,0.12)] backdrop-blur-xl ${compact ? 'p-4' : 'p-5'}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
             Voice follow-up
           </p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--text)]">
+          <h2 className={`mt-2 font-semibold tracking-tight text-[var(--text)] ${compact ? 'text-lg' : 'text-xl'}`}>
             Refine by voice
           </h2>
         </div>
@@ -285,19 +285,19 @@ export function VoiceStyler() {
 
       {voiceState === 'idle' && (
         <>
-          <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
+          <p className={`mt-3 leading-relaxed text-[var(--text-muted)] ${compact ? 'text-[13px]' : 'text-sm'}`}>
             Say what to change once the first picks are in, like cheaper, dressier, or more casual.
           </p>
           <button
             onClick={startListening}
-            className="mt-5 flex w-full items-center justify-between rounded-[24px] border border-white/35 bg-white/60 px-4 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm transition-all hover:border-white/55 hover:bg-white/72"
+            className={`mt-4 flex w-full items-center justify-between rounded-[24px] border border-white/35 bg-white/60 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm transition-all hover:border-white/55 hover:bg-white/72 ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(82,126,255,0.24)] bg-white/80">
+              <div className={`flex items-center justify-center rounded-full border border-[rgba(82,126,255,0.24)] bg-white/80 ${compact ? 'h-11 w-11' : 'h-12 w-12'}`}>
                 <Mic className="h-5 w-5 text-[var(--text)]" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[var(--text)]">Talk through a tweak</p>
+                <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>Talk through a tweak</p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
                   Tap once, say the change, and we will update the results.
                 </p>
@@ -306,26 +306,28 @@ export function VoiceStyler() {
             <ArrowIndicator />
           </button>
 
-          <div className="mt-4 space-y-2 text-xs text-[var(--text-muted)]">
-            <p>Try saying:</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                'Trip to India in summer',
-                'Wedding guest look under £150',
-                'Find me one great blazer for work',
-              ].map((prompt) => (
-                <span key={prompt} className="rounded-full border border-[var(--border)] bg-white/55 px-3 py-1.5">
-                  {prompt}
-                </span>
-              ))}
+          {!compact && (
+            <div className="mt-4 space-y-2 text-xs text-[var(--text-muted)]">
+              <p>Try saying:</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  'Trip to India in summer',
+                  'Wedding guest look under £150',
+                  'Find me one great blazer for work',
+                ].map((prompt) => (
+                  <span key={prompt} className="rounded-full border border-[var(--border)] bg-white/55 px-3 py-1.5">
+                    {prompt}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
 
       {voiceState !== 'idle' && (
         <div className="mt-4 space-y-4">
-          <div className="rounded-[24px] border border-white/35 bg-white/68 px-4 py-4 backdrop-blur-sm">
+          <div className={`rounded-[24px] border border-white/35 bg-white/68 backdrop-blur-sm ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">
                 {voiceState === 'listening' ? 'Listening...' : voiceState === 'processing' ? 'Processing...' : 'Voice issue'}
@@ -344,7 +346,7 @@ export function VoiceStyler() {
           <div className="flex items-center gap-2">
             <button
               onClick={cancel}
-              className="flex h-11 items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-white/60 px-4 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
+              className={`flex items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-white/60 px-4 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)] ${compact ? 'h-10' : 'h-11'}`}
             >
               <X className="h-4 w-4" />
               Cancel
@@ -352,7 +354,7 @@ export function VoiceStyler() {
             <button
               onClick={voiceState === 'listening' ? submitNow : undefined}
               disabled={voiceState === 'processing'}
-              className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all ${compact ? 'h-10' : 'h-11'} ${
                 voiceState === 'listening'
                   ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]'
                   : 'cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-faint)]'

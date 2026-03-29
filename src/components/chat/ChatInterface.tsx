@@ -258,32 +258,32 @@ export function ChatInterface() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-4 py-4" style={{ scrollbarWidth: 'thin' }}>
+      <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5" style={{ scrollbarWidth: 'thin' }}>
         <div className="mx-auto w-full max-w-3xl space-y-4">
           {(userProfile.mission || userProfile.tripPreference || userProfile.budget || userProfile.budgetMax || userProfile.size || userProfile.gender || userProfile.shoeSize || userProfile.occasionStrictness || userProfile.fitNotes) && (
             <div className="flex flex-wrap gap-2">
               {userProfile.mission && (
-                <span className="rounded-full border border-[#E8A94A]/30 bg-[#E8A94A]/10 px-3 py-1 text-[11px] text-[#E8A94A]">
+                <span className="rounded-full border border-[#E8A94A]/30 bg-[#E8A94A]/10 px-3 py-1.5 text-xs text-[#E8A94A] sm:py-1 sm:text-[11px]">
                   {getMissionTitle(userProfile.mission)}
                 </span>
               )}
               {userProfile.tripPreference && (
-                <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
+                <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] sm:py-1 sm:text-[11px]">
                   {getTripPreferenceTitle(userProfile.tripPreference)}
                 </span>
               )}
               {getBudgetLabel(userProfile) && (
-                <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
+                <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] sm:py-1 sm:text-[11px]">
                   {userProfile.budgetScope === 'per_item' ? 'Per item' : 'Budget'} {getBudgetLabel(userProfile)}
                 </span>
               )}
               {userProfile.size && (
-                <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
+                <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] sm:py-1 sm:text-[11px]">
                   Size {userProfile.size}
                 </span>
               )}
               {userProfile.gender && (
-                <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
+                <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] sm:py-1 sm:text-[11px]">
                   Shopping for {userProfile.gender}
                 </span>
               )}
@@ -292,8 +292,8 @@ export function ChatInterface() {
 
           {messages.length === 0 && !isBootingFromHomepage && (
             <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-subtle)]/88 p-5 backdrop-blur-sm">
-              <p className="text-sm font-semibold text-[var(--text)]">Voice is the main way in here.</p>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--text-muted)]">
+              <p className="text-base font-semibold text-[var(--text)] sm:text-sm">Voice is the main way in here.</p>
+              <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-[var(--text-muted)] sm:text-sm">
                 Speak to the stylist from the panel on the left, or type a quick brief below if that is easier right now.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -301,7 +301,7 @@ export function ChatInterface() {
                   <button
                     key={suggestion}
                     onClick={() => handleSend(suggestion)}
-                    className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3.5 py-1.5 text-xs text-[var(--text-muted)] transition-all hover:border-[#E8A94A]/35 hover:text-[var(--text)]"
+                    className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3.5 py-2 text-sm text-[var(--text-muted)] transition-all hover:border-[#E8A94A]/35 hover:text-[var(--text)] sm:py-1.5 sm:text-xs"
                   >
                     {suggestion}
                   </button>
@@ -315,9 +315,9 @@ export function ChatInterface() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
                 Looking now
               </p>
-              <h2 className="mt-2 text-lg font-semibold text-[var(--text)]">Pulling together your first picks</h2>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--text)] sm:text-lg">Pulling together your first picks</h2>
               {pendingMessage?.text && (
-                <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
+                <p className="mt-3 text-[15px] leading-relaxed text-[var(--text-muted)] sm:text-sm">
                   {pendingMessage.text}
                 </p>
               )}
