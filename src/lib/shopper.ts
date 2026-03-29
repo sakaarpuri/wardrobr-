@@ -25,7 +25,9 @@ export interface UserProfile {
 }
 
 export const BUDGET_OPTIONS = ['Under £50', '£50–150', '£150–300', '£300+'] as const
-export const SIZE_OPTIONS = ['6', '8', '10', '12', '14', '16', 'XS', 'S', 'M', 'L', 'XL'] as const
+export const WOMENS_SIZE_OPTIONS = ['6', '8', '10', '12', '14', '16', '18', 'XS', 'S', 'M', 'L', 'XL'] as const
+export const MENS_SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '30', '32', '34', '36', '38'] as const
+export const UNIVERSAL_SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL'] as const
 export const SHOPPING_FOR_OPTIONS = ['Women', 'Men'] as const
 
 export const MISSION_OPTIONS: Array<{
@@ -117,6 +119,17 @@ export function getMissionPrompt(mission: ShopperMission): string {
 export function getMissionTitle(mission: ShopperMission | null): string | null {
   if (!mission) return null
   return MISSION_OPTIONS.find((option) => option.value === mission)?.title ?? null
+}
+
+export function getSizeOptions(gender: UserProfile['gender']) {
+  if (gender === 'women') return [...WOMENS_SIZE_OPTIONS] as string[]
+  if (gender === 'men') return [...MENS_SIZE_OPTIONS] as string[]
+  return [...UNIVERSAL_SIZE_OPTIONS] as string[]
+}
+
+export function isSizeCompatibleWithGender(size: string | null, gender: UserProfile['gender']) {
+  if (!size) return true
+  return getSizeOptions(gender).includes(size)
 }
 
 export function getTripPreferencePrompt(preference: TripPreference): string {

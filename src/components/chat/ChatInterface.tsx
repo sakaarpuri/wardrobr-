@@ -41,6 +41,7 @@ export function ChatInterface() {
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const hasFiredPending = useRef(false)
+  const isBootingFromHomepage = Boolean(pendingMessage) || (isLoading && messages.length === 0)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -289,7 +290,7 @@ export function ChatInterface() {
             </div>
           )}
 
-          {messages.length === 0 && (
+          {messages.length === 0 && !isBootingFromHomepage && (
             <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-subtle)]/88 p-5 backdrop-blur-sm">
               <p className="text-sm font-semibold text-[var(--text)]">Voice is the main way in here.</p>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--text-muted)]">
@@ -306,6 +307,20 @@ export function ChatInterface() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {messages.length === 0 && isBootingFromHomepage && (
+            <div className="rounded-[28px] border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(145deg,rgba(82,126,255,0.10),rgba(255,255,255,0.92))] p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
+                Looking now
+              </p>
+              <h2 className="mt-2 text-lg font-semibold text-[var(--text)]">Pulling together your first picks</h2>
+              {pendingMessage?.text && (
+                <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
+                  {pendingMessage.text}
+                </p>
+              )}
             </div>
           )}
 

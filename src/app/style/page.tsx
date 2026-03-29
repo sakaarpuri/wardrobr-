@@ -6,11 +6,17 @@ import { ChatInterface } from '@/components/chat/ChatInterface'
 import { VoiceStyler } from '@/components/voice/VoiceStyler'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useChatStore } from '@/store/chatStore'
-import { BUDGET_OPTIONS, SHOPPING_FOR_OPTIONS, SIZE_OPTIONS } from '@/lib/shopper'
+import { BUDGET_OPTIONS, SHOPPING_FOR_OPTIONS, getSizeOptions, isSizeCompatibleWithGender } from '@/lib/shopper'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 
 export default function StylePage() {
-  const { clearChat, messages, userProfile, setUserProfile } = useChatStore()
+  const { clearChat, isLoading, messages, pendingMessage, userProfile, setUserProfile } = useChatStore()
+  const hasShoppableResults = messages.some((message) =>
+    message.type === 'ai_product_stream' ||
+    message.type === 'ai_outfit_board'
+  )
+  const showSideRail = hasShoppableResults || (!isLoading && !pendingMessage && messages.length === 0)
+  const sizeOptions = getSizeOptions(userProfile.gender)
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
@@ -35,107 +41,121 @@ export default function StylePage() {
       </header>
 
       <main className="relative z-10 px-4 py-4 sm:px-6 sm:py-6">
-        <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="space-y-4">
-            <VoiceStyler />
+        <div className={`mx-auto grid gap-4 ${showSideRail ? 'max-w-7xl lg:grid-cols-[320px_minmax(0,1fr)]' : 'max-w-5xl'}`}>
+          {showSideRail && (
+            <aside className="space-y-4">
+              <VoiceStyler />
 
-            <section className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)]/85 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-                    Quick Controls
-                  </p>
-                  <h2 className="mt-2 text-lg font-semibold text-[var(--text)]">Tighten the brief</h2>
-                </div>
-                <span className="text-[11px] text-[var(--text-faint)]">Optional</span>
-              </div>
-
-              <div className="mt-4 space-y-4">
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">Budget</p>
-                  <div className="flex flex-wrap gap-2">
-                    {BUDGET_OPTIONS.map((budget) => (
-                      <button
-                        key={budget}
-                        onClick={() => setUserProfile({
-                          budget: userProfile.budget === budget ? null : budget,
-                          budgetMax: null,
-                        })}
-                        className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
-                          userProfile.budget === budget
-                            ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
-                            : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
-                        }`}
-                      >
-                        {budget}
-                      </button>
-                    ))}
+              <section className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)]/85 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
+                      Optional details
+                    </p>
+                    <h2 className="mt-2 text-lg font-semibold text-[var(--text)]">Add a few details</h2>
                   </div>
+                  <span className="text-[11px] text-[var(--text-faint)]">Optional</span>
                 </div>
 
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">Shopping for</p>
-                  <div className="flex flex-wrap gap-2">
-                    {SHOPPING_FOR_OPTIONS.map((gender) => (
-                      <button
-                        key={gender}
-                        onClick={() => setUserProfile({ gender: userProfile.gender === gender.toLowerCase() as 'women' | 'men' ? null : gender.toLowerCase() as 'women' | 'men' })}
-                        className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
-                          userProfile.gender === gender.toLowerCase()
-                            ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
-                            : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
-                        }`}
-                      >
-                        {gender}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">Size</p>
-                  <div className="flex flex-wrap gap-2">
-                    {SIZE_OPTIONS.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => setUserProfile({ size: userProfile.size === size ? null : size })}
-                        className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
-                          userProfile.size === size
-                            ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
-                            : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)]/85 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-                Starter Boards
-              </p>
-              <div className="mt-4 space-y-3">
-                {EXAMPLE_BOARDS.map((board) => (
-                  <Link
-                    key={board.id}
-                    href={`/board/${board.id}`}
-                    className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 transition-all hover:border-[#E8A94A]/30 hover:bg-[var(--bg-card)]"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--text)]">{board.title}</p>
-                      <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
-                        {board.board.products.length}-piece look · {board.board.totalPrice ? new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(board.board.totalPrice) : ''}
-                      </p>
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">Budget</p>
+                    <div className="flex flex-wrap gap-2">
+                      {BUDGET_OPTIONS.map((budget) => (
+                        <button
+                          key={budget}
+                          onClick={() => setUserProfile({
+                            budget: userProfile.budget === budget ? null : budget,
+                            budgetMax: null,
+                          })}
+                          className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                            userProfile.budget === budget
+                              ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
+                              : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
+                          }`}
+                        >
+                          {budget}
+                        </button>
+                      ))}
                     </div>
-                    <span className="text-xs text-[var(--text-faint)]">Open</span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          </aside>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">Shopping for</p>
+                    <div className="flex flex-wrap gap-2">
+                      {SHOPPING_FOR_OPTIONS.map((gender) => {
+                        const nextGender = gender.toLowerCase() as 'women' | 'men'
+                        const isActive = userProfile.gender === nextGender
+                        return (
+                          <button
+                            key={gender}
+                            onClick={() => {
+                              const resolvedGender = isActive ? null : nextGender
+                              setUserProfile({
+                                gender: resolvedGender,
+                                size: isSizeCompatibleWithGender(userProfile.size, resolvedGender) ? userProfile.size : null,
+                              })
+                            }}
+                            className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                              isActive
+                                ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
+                                : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
+                            }`}
+                          >
+                            {gender}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">
+                      {userProfile.gender === 'men' ? "Men's size" : userProfile.gender === 'women' ? "Women's size" : 'Size'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {sizeOptions.map((size) => (
+                        <button
+                          key={size}
+                          onClick={() => setUserProfile({ size: userProfile.size === size ? null : size })}
+                          className={`rounded-full border px-3 py-1.5 text-xs transition-all ${
+                            userProfile.size === size
+                              ? 'border-[#E8A94A]/60 bg-[#E8A94A]/10 text-[#E8A94A]'
+                              : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)]/85 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
+                  Starter Boards
+                </p>
+                <div className="mt-4 space-y-3">
+                  {EXAMPLE_BOARDS.map((board) => (
+                    <Link
+                      key={board.id}
+                      href={`/board/${board.id}`}
+                      className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 transition-all hover:border-[#E8A94A]/30 hover:bg-[var(--bg-card)]"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--text)]">{board.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+                          {board.board.products.length}-piece look · {board.board.totalPrice ? new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(board.board.totalPrice) : ''}
+                        </p>
+                      </div>
+                      <span className="text-xs text-[var(--text-faint)]">Open</span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            </aside>
+          )}
 
           <section className="min-h-[70vh] overflow-hidden rounded-[32px] border border-[var(--border)] bg-[var(--bg-card)]/88 shadow-[0_24px_90px_rgba(15,23,42,0.08)] backdrop-blur-sm">
             <ChatInterface />

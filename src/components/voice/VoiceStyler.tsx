@@ -274,10 +274,10 @@ export function VoiceStyler() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-            Voice Stylist
+            Voice follow-up
           </p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--text)]">
-            Talk to Wardrobr
+            Refine by voice
           </h2>
         </div>
         <Sparkles className="h-5 w-5 text-[#E8A94A]" />
@@ -286,7 +286,7 @@ export function VoiceStyler() {
       {voiceState === 'idle' && (
         <>
           <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-            Best route in. Say the brief naturally, then let the shopping results build from there.
+            Say what to change once the first picks are in, like cheaper, dressier, or more casual.
           </p>
           <button
             onClick={startListening}
@@ -297,9 +297,9 @@ export function VoiceStyler() {
                 <Mic className="h-5 w-5 text-[var(--text)]" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[var(--text)]">Start voice styling</p>
+                <p className="text-sm font-semibold text-[var(--text)]">Talk through a tweak</p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
-                  Tap once, speak, stop. We’ll send it automatically.
+                  Tap once, say the change, and we will update the results.
                 </p>
               </div>
             </div>
