@@ -114,14 +114,14 @@ function HomepageInput() {
   return (
     <div className="w-full max-w-xl">
       {/* Main input */}
-      <div className="flex items-end gap-2 bg-[#130F0C]/90 backdrop-blur border border-white/10 rounded-2xl px-4 py-3 focus-within:border-[#E8A94A]/40 transition-colors">
+      <div className="flex items-end gap-2 bg-[#1C1612] border border-white/20 rounded-2xl px-4 py-3.5 focus-within:border-[#E8A94A]/60 transition-colors shadow-lg shadow-black/40">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKey}
           placeholder="Describe the occasion, budget, or a brand you love…"
           rows={1}
-          className="flex-1 bg-transparent text-white text-sm placeholder-white/30 resize-none outline-none leading-relaxed max-h-28 overflow-y-auto"
+          className="flex-1 bg-transparent text-white text-sm placeholder-white/45 resize-none outline-none leading-relaxed max-h-28 overflow-y-auto"
           style={{ scrollbarWidth: 'none' }}
         />
         <div className="flex items-center gap-1.5 flex-shrink-0">

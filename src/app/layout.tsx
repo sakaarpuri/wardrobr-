@@ -25,11 +25,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${cormorant.variable} h-full`}>
       <body className="font-sans bg-[#0C0A09] text-white antialiased h-full">
         {children}
-        {/* Skimlinks auto-affiliate script — loads after page is interactive */}
-        <Script
-          src="https://s.skimresources.com/js/300673X1788541.skimlinks.js"
-          strategy="afterInteractive"
-        />
       </body>
     </html>
   )

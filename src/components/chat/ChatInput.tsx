@@ -77,7 +77,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
       )}
 
       {/* Input bar */}
-      <div className="flex items-end gap-2 bg-[#130F0C] border border-white/10 rounded-2xl px-3 py-2.5 focus-within:border-[#E8A94A]/30 transition-colors">
+      <div className="flex items-end gap-2 bg-[#1C1612] border border-white/20 rounded-2xl px-3 py-2.5 focus-within:border-[#E8A94A]/60 transition-colors shadow-lg shadow-black/40">
         <button
           onClick={() => setShowImageUpload(!showImageUpload)}
           title="Upload a photo of a look to style"
@@ -96,7 +96,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
           onKeyDown={handleKeyDown}
           placeholder={placeholder ?? 'Describe your style or ask for an outfit...'}
           rows={1}
-          className="flex-1 bg-transparent text-white text-sm placeholder-white/30 resize-none outline-none leading-relaxed max-h-32 overflow-y-auto"
+          className="flex-1 bg-transparent text-white text-sm placeholder-white/45 resize-none outline-none leading-relaxed max-h-32 overflow-y-auto"
           style={{ scrollbarWidth: 'none' }}
         />
 
