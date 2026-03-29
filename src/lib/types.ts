@@ -1,7 +1,10 @@
+import type { UserProfile } from './shopper'
+
 export type MessageType =
   | 'user_text'
   | 'user_image'
   | 'ai_text'
+  | 'ai_clarification'
   | 'ai_product_card'
   | 'ai_product_stream'
   | 'ai_outfit_board'
@@ -49,6 +52,27 @@ export interface OutfitBoard {
   warnings?: string[]
 }
 
+export interface ClarificationOption {
+  id: string
+  label: string
+  helper?: string
+  profilePatch?: Partial<Pick<UserProfile, 'mission' | 'tripPreference'>>
+}
+
+export interface ClarificationGroup {
+  id: 'mission' | 'trip_preference'
+  label: string
+  options: ClarificationOption[]
+  selectedOptionId?: string
+}
+
+export interface ClarificationPrompt {
+  question: string
+  groups: ClarificationGroup[]
+  ctaLabel?: string
+  isSubmitting?: boolean
+}
+
 export interface Message {
   id: string
   type: MessageType
@@ -58,6 +82,7 @@ export interface Message {
   products?: Product[]
   outfitBoard?: OutfitBoard
   styleAnalysis?: StyleAnalysis
+  clarification?: ClarificationPrompt
   timestamp: Date
 }
 

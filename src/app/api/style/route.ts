@@ -3,8 +3,8 @@ import { Part } from '@google/generative-ai'
 import { getGeminiModel } from '@/lib/gemini'
 import { searchProducts, rewriteAffiliateUrl } from '@/lib/affiliate'
 import { routeRequest } from '@/lib/gemini-router'
-import { Product, OutfitBoard } from '@/lib/types'
-import { UserProfile, buildProfileContext, getBudgetCap, getBudgetStatus, getSearchPriceCap, normaliseUserProfile } from '@/lib/shopper'
+import { ClarificationGroup, ClarificationPrompt, Product, OutfitBoard } from '@/lib/types'
+import { UserProfile, buildProfileContext, getBudgetCap, getBudgetStatus, getSearchPriceCap, inferProfileFromReply, normaliseUserProfile } from '@/lib/shopper'
 import crypto from 'crypto'
 
 // Allow up to 60s on Vercel (Pro) — Gemini agentic loop can take 15-25s
@@ -101,7 +101,6 @@ export async function POST(req: NextRequest) {
   }
 
   const { message, imageBase64, imageMimeType, history = [], profile: rawProfile } = body
-  const profile = normaliseUserProfile(rawProfile)
 
   if (!message && !imageBase64) {
     return NextResponse.json({ error: 'Message or image required' }, { status: 400 })
@@ -125,6 +124,11 @@ export async function POST(req: NextRequest) {
           parts: [{ text: String(h.parts?.[0]?.text ?? '').slice(0, 2000) }],
         }))
     : []
+  const lastAssistantText = [...safeHistory].reverse().find((entry) => entry.role === 'model')?.parts?.[0]?.text ?? null
+  const profile = {
+    ...normaliseUserProfile(rawProfile),
+    ...inferProfileFromReply(message ?? '', normaliseUserProfile(rawProfile), lastAssistantText),
+  }
 
   // ── SSE stream ─────────────────────────────────────────────────────────────
   const stream = new ReadableStream({
@@ -134,9 +138,9 @@ export async function POST(req: NextRequest) {
       try {
         emit({ type: 'status', text: 'Reading your style request…' })
 
-        const clarificationQuestion = getClarificationQuestion(message, profile, Boolean(imageBase64))
-        if (clarificationQuestion) {
-          emit({ type: 'result', text: clarificationQuestion, hasBoard: false })
+        const clarificationPrompt = getClarificationPrompt(message, profile, Boolean(imageBase64))
+        if (clarificationPrompt) {
+          emit({ type: 'result', text: clarificationPrompt.question, clarification: clarificationPrompt, hasBoard: false })
           return
         }
 
@@ -336,35 +340,38 @@ function applyShopperConstraints(
   return nextParams
 }
 
-function getClarificationQuestion(
+function getClarificationPrompt(
   message: string | undefined,
   profile: UserProfile,
   hasImage: boolean
-) {
+): ClarificationPrompt | null {
   if (hasImage || !message) return null
+
+  const travelPrompt = getTravelClarificationPrompt(message, profile)
+  if (travelPrompt) return travelPrompt
 
   const text = message.trim().toLowerCase()
   const wordCount = text.split(/\s+/).filter(Boolean).length
   const hasOccasion = /(wedding|interview|job|office|party|date|holiday|trip|brunch|festival|graduation|work|weekend|ceremony)/.test(text)
   const hasCategory = /(dress|blazer|jacket|coat|trousers|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit)/.test(text)
-  const travelClarification = getTravelClarification(message)
 
-  if (travelClarification) {
-    return travelClarification
-  }
-
-  if (!profile.mission && wordCount <= 4 && !hasOccasion && !hasCategory) {
-    return 'Are you after one key item or a full look?'
-  }
-
-  if ((profile.mission === 'full_look' || !profile.mission) && wordCount <= 6 && !hasOccasion && !hasCategory) {
-    return 'What are you dressing for so I can steer the look properly?'
+  if (!profile.mission && wordCount <= 6 && !hasCategory) {
+    if (!hasOccasion || wordCount <= 4) {
+      return {
+        question: 'Pick the route and I’ll shop it.',
+        groups: [buildMissionClarificationGroup()],
+        ctaLabel: 'Show my picks',
+      }
+    }
   }
 
   return null
 }
 
-function getTravelClarification(message: string) {
+function getTravelClarificationPrompt(
+  message: string,
+  profile: UserProfile
+): ClarificationPrompt | null {
   const text = message.trim().toLowerCase()
   const isTravelRequest = /(travel|trip|holiday|vacation|heading to|going to|flying to|city break|weekend away|packing)/.test(text)
 
@@ -377,21 +384,67 @@ function getTravelClarification(message: string) {
   const destination = destinationMatch?.[1]?.replace(/[,.!?]+$/g, '').trim()
   const timing = timingMatch?.[1]?.toLowerCase() ?? null
   const warmDestination = /(las palmas|la palma|gran canaria|tenerife|mallorca|majorca|ibiza|canary islands|barcelona|lisbon|amalfi|mykonos|athens|nice|miami|dubai)/.test(text)
+  const groups: ClarificationGroup[] = []
+
+  if (!profile.tripPreference) {
+    groups.push({
+      id: 'trip_preference' as const,
+      label: 'Trip mix',
+      options: [
+        {
+          id: 'daytime',
+          label: warmDestination ? 'Beach + walking' : 'Daytime + casual',
+          helper: warmDestination ? 'Easy daytime outfits first.' : 'Keep it relaxed and practical.',
+          profilePatch: { tripPreference: 'daytime' },
+        },
+        {
+          id: 'mixed',
+          label: 'Both',
+          helper: 'Cover daytime plans and dressier dinners.',
+          profilePatch: { tripPreference: 'mixed' },
+        },
+        {
+          id: 'dressy',
+          label: 'Dressier',
+          helper: 'Bias toward sharper evening options.',
+          profilePatch: { tripPreference: 'dressy' },
+        },
+      ],
+    })
+  }
+
+  if (!profile.mission) {
+    groups.push(buildMissionClarificationGroup())
+  }
+
+  if (groups.length === 0) {
+    return null
+  }
 
   if (destination) {
     const lead = warmDestination
       ? `Heading to ${toTitleCase(destination)}${timing ? ` ${timing}` : ''}, I’d start with a warm-weather travel capsule.`
       : `Heading to ${toTitleCase(destination)}${timing ? ` ${timing}` : ''}, I’d start with a travel capsule.`
-    return warmDestination
-      ? `${lead} Is this mainly beach + walking, or do you want a couple of dressier dinner looks too?`
-      : `${lead} Is this mainly daytime exploring, or do you want a couple of dressier dinner looks too?`
+    return {
+      question: `${lead} Pick the trip mix${!profile.mission ? ' and whether you want a full look or one hero piece' : ''}.`,
+      groups,
+      ctaLabel: 'Show my picks',
+    }
   }
 
   if (warmDestination) {
-    return 'I’d start with a warm-weather travel capsule. Is this mainly beach + walking, or do you want a couple of dressier dinner looks too?'
+    return {
+      question: `I’d start with a warm-weather travel capsule. Pick the trip mix${!profile.mission ? ' and whether you want a full look or one hero piece' : ''}.`,
+      groups,
+      ctaLabel: 'Show my picks',
+    }
   }
 
-  return 'I’d start with a travel capsule for the trip. Is this mainly daytime exploring, or do you want a couple of dressier dinner looks too?'
+  return {
+    question: `I’d start with a travel capsule for the trip. Pick the trip mix${!profile.mission ? ' and whether you want a full look or one hero piece' : ''}.`,
+    groups,
+    ctaLabel: 'Show my picks',
+  }
 }
 
 function toTitleCase(value: string) {
@@ -400,6 +453,27 @@ function toTitleCase(value: string) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ')
+}
+
+function buildMissionClarificationGroup(): ClarificationGroup {
+  return {
+    id: 'mission',
+    label: 'Shop for',
+    options: [
+      {
+        id: 'full_look',
+        label: 'Full look',
+        helper: 'Pull the outfit together end to end.',
+        profilePatch: { mission: 'full_look' },
+      },
+      {
+        id: 'hero_piece',
+        label: 'Hero piece',
+        helper: 'Start with the main item worth buying first.',
+        profilePatch: { mission: 'hero_piece' },
+      },
+    ],
+  }
 }
 
 function buildBoardWarnings(

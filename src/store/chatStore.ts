@@ -30,6 +30,7 @@ interface ChatStore {
   swapBoardProduct: (boardId: string, oldProductId: string, newProduct: Product) => void
   clearChat: () => void
   updateLastMessage: (updates: Partial<Message>) => void
+  updateMessage: (id: string, updates: Partial<Message>) => void
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
@@ -95,4 +96,11 @@ export const useChatStore = create<ChatStore>((set) => ({
       messages[messages.length - 1] = { ...messages[messages.length - 1], ...updates }
       return { messages }
     }),
+
+  updateMessage: (id, updates) =>
+    set((state) => ({
+      messages: state.messages.map((message) =>
+        message.id === id ? { ...message, ...updates } : message
+      ),
+    })),
 }))

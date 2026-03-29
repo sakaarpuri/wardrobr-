@@ -1,6 +1,7 @@
 export type ShopperMission = 'full_look' | 'hero_piece' | 'match_photo' | 'style_existing'
 export type BudgetScope = 'total' | 'per_item'
 export type OccasionStrictness = 'relaxed' | 'balanced' | 'strict'
+export type TripPreference = 'daytime' | 'mixed' | 'dressy'
 export type SwapActionKey =
   | 'cheaper'
   | 'dressier'
@@ -17,6 +18,7 @@ export interface UserProfile {
   budget: string | null
   budgetScope: BudgetScope
   mission: ShopperMission | null
+  tripPreference: TripPreference | null
   fitNotes: string | null
   occasionStrictness: OccasionStrictness | null
 }
@@ -65,6 +67,7 @@ export function getEmptyUserProfile(): UserProfile {
     budget: null,
     budgetScope: 'total',
     mission: null,
+    tripPreference: null,
     fitNotes: null,
     occasionStrictness: null,
   }
@@ -81,12 +84,14 @@ export function buildProfileContext(profile: UserProfile): string {
   const parts: string[] = []
 
   if (profile.mission) parts.push(`shopping mission: ${getMissionPrompt(profile.mission)}`)
+  if (profile.tripPreference) parts.push(`trip mix: ${getTripPreferencePrompt(profile.tripPreference)}`)
   if (profile.gender) parts.push(`shopping for ${profile.gender}'s clothing`)
   if (profile.size) parts.push(`preferred UK size ${profile.size}`)
   if (profile.shoeSize) parts.push(`preferred UK shoe size ${profile.shoeSize}`)
   if (profile.budget) parts.push(`${profile.budgetScope === 'per_item' ? 'per-item budget' : 'total budget'} ${profile.budget}`)
   if (profile.fitNotes) parts.push(`fit notes: ${profile.fitNotes}`)
   if (profile.occasionStrictness) parts.push(`occasion strictness: ${profile.occasionStrictness}`)
+  if (profile.mission && profile.tripPreference) parts.push('structured travel clarification complete, proceed without asking another follow-up question')
 
   if (parts.length === 0) return ''
   return `[Shopper brief: ${parts.join(', ')}]`
@@ -109,6 +114,81 @@ export function getMissionPrompt(mission: ShopperMission): string {
 export function getMissionTitle(mission: ShopperMission | null): string | null {
   if (!mission) return null
   return MISSION_OPTIONS.find((option) => option.value === mission)?.title ?? null
+}
+
+export function getTripPreferencePrompt(preference: TripPreference): string {
+  switch (preference) {
+    case 'daytime':
+      return 'mostly relaxed daytime dressing'
+    case 'dressy':
+      return 'mostly dressier plans and evenings'
+    case 'mixed':
+    default:
+      return 'a mix of casual daytime looks and dressier options'
+  }
+}
+
+export function getTripPreferenceTitle(preference: TripPreference | null): string | null {
+  if (!preference) return null
+  switch (preference) {
+    case 'daytime':
+      return 'Daytime + casual'
+    case 'dressy':
+      return 'Dressier plans'
+    case 'mixed':
+    default:
+      return 'Day + dinner mix'
+  }
+}
+
+export function inferProfileFromReply(
+  message: string,
+  profile: UserProfile,
+  lastAssistantText?: string | null
+): Partial<UserProfile> {
+  const text = message.trim().toLowerCase()
+  const assistant = lastAssistantText?.trim().toLowerCase() ?? ''
+  const next: Partial<UserProfile> = {}
+
+  if (!text) return next
+
+  if (!profile.mission) {
+    if (/(full look|full outfit|complete look|whole outfit)/.test(text)) {
+      next.mission = 'full_look'
+    } else if (/(hero piece|one key item|one item|single item|single piece|key piece)/.test(text)) {
+      next.mission = 'hero_piece'
+    } else if (/(style what i own|style something i own|style what i have)/.test(text)) {
+      next.mission = 'style_existing'
+    }
+  }
+
+  if (!profile.tripPreference) {
+    if (/\bboth\b|\bmixed\b|\ba mix\b/.test(text)) {
+      next.tripPreference = 'mixed'
+    } else if (/(casual|relaxed|beach|walking|daytime|exploring)/.test(text) && !/(dressy|dressier|dinner|evening|formal)/.test(text)) {
+      next.tripPreference = 'daytime'
+    } else if (/(dressy|dressier|dinner|evening|formal)/.test(text) && !/(casual|relaxed|beach|walking|daytime|exploring)/.test(text)) {
+      next.tripPreference = 'dressy'
+    } else if (assistant.includes('relaxed') && assistant.includes('dressier') && /\bboth\b/.test(text)) {
+      next.tripPreference = 'mixed'
+    }
+  }
+
+  return next
+}
+
+export function isLikelyClarificationReply(
+  message: string,
+  profile: UserProfile,
+  lastAssistantText?: string | null
+): boolean {
+  const text = message.trim()
+  if (!text) return false
+
+  const wordCount = text.split(/\s+/).filter(Boolean).length
+  if (wordCount > 5) return false
+
+  return Object.keys(inferProfileFromReply(text, profile, lastAssistantText)).length > 0
 }
 
 export function getBudgetCap(label: string | null): number | null {

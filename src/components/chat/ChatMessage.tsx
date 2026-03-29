@@ -4,10 +4,12 @@ import Image from 'next/image'
 import { Message } from '@/lib/types'
 import { OutfitBoard } from '@/components/board/OutfitBoard'
 import { ProductCard } from '@/components/board/ProductCard'
+import { ClarificationCard } from './ClarificationCard'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface ChatMessageProps {
   message: Message
+  onClarificationSelect?: (message: Message, groupId: string, optionId: string) => void
 }
 
 // Sequentially pulsing dots — fashion editorial loading indicator
@@ -26,7 +28,7 @@ function PulsingDots() {
   )
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, onClarificationSelect }: ChatMessageProps) {
   const isUser = message.type === 'user_text' || message.type === 'user_image'
   const isLoading = message.type === 'system_loading'
 
@@ -133,6 +135,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}
         {message.content && (
           <p className="whitespace-pre-wrap font-display italic text-sm">{message.content}</p>
+        )}
+        {message.type === 'ai_clarification' && message.clarification && onClarificationSelect && (
+          <div className={`${message.content ? 'mt-4 border-t border-[var(--border)] pt-4' : ''}`}>
+            <ClarificationCard
+              clarification={message.clarification}
+              onSelect={(groupId, optionId) => onClarificationSelect(message, groupId, optionId)}
+            />
+          </div>
         )}
       </div>
     </motion.div>

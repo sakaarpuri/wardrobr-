@@ -5,8 +5,8 @@ import { useChatStore } from '@/store/chatStore'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { track } from '@/lib/posthog'
-import { Product } from '@/lib/types'
-import { BUDGET_OPTIONS, MISSION_OPTIONS, SHOPPING_FOR_OPTIONS, SIZE_OPTIONS, getMissionTitle } from '@/lib/shopper'
+import { ClarificationPrompt, Message, Product } from '@/lib/types'
+import { BUDGET_OPTIONS, MISSION_OPTIONS, SHOPPING_FOR_OPTIONS, SIZE_OPTIONS, getMissionTitle, getTripPreferenceTitle, inferProfileFromReply, isLikelyClarificationReply, normaliseUserProfile } from '@/lib/shopper'
 
 export function ChatInterface() {
   const {
@@ -14,6 +14,7 @@ export function ChatInterface() {
     addMessage, setLoading, setCurrentBoard, setOccasionContext,
     userProfile, setUserProfile,
     pendingMessage, setPendingMessage,
+    occasionContext, updateMessage,
   } = useChatStore()
   const bottomRef = useRef<HTMLDivElement>(null)
   const hasFiredPending = useRef(false)
@@ -37,16 +38,39 @@ export function ChatInterface() {
     text: string,
     imageBase64?: string,
     imageMimeType?: string,
-    imagePreview?: string
+    imagePreview?: string,
+    options?: {
+      silent?: boolean
+      overrideProfile?: Partial<typeof userProfile>
+      resolvedClarificationId?: string
+      overrideText?: string
+    }
   ) => {
     let productStreamId: string | null = null
-    if (text) setOccasionContext(text)
+    const lastAssistantText = [...messages].reverse().find((message) => message.type === 'ai_text' || message.type === 'ai_clarification')?.content ?? null
+    const inferredProfilePatch = text ? inferProfileFromReply(text, userProfile, lastAssistantText) : {}
+    const effectiveProfile = {
+      ...normaliseUserProfile(userProfile),
+      ...inferredProfilePatch,
+      ...(options?.overrideProfile ?? {}),
+    }
+    const isClarificationReply = text ? isLikelyClarificationReply(text, userProfile, lastAssistantText) : false
+    const requestText = options?.overrideText
+      ?? ((isClarificationReply && occasionContext) ? occasionContext : text)
 
-    if (messages.length === 0) track('session_started', { occasion: text })
+    if (Object.keys(inferredProfilePatch).length > 0) {
+      setUserProfile(inferredProfilePatch)
+    }
 
-    if (imageBase64) {
+    if (requestText && !options?.silent && !isClarificationReply) {
+      setOccasionContext(requestText)
+    }
+
+    if (messages.length === 0 && requestText) track('session_started', { occasion: requestText })
+
+    if (!options?.silent && imageBase64) {
       addMessage({ type: 'user_image', content: text || undefined, imageUrl: imagePreview, imageBase64 })
-    } else {
+    } else if (!options?.silent && text) {
       addMessage({ type: 'user_text', content: text })
     }
 
@@ -55,7 +79,7 @@ export function ChatInterface() {
 
     try {
       const history = messages
-        .filter((m) => m.type === 'user_text' || m.type === 'ai_text')
+        .filter((m) => m.type === 'user_text' || m.type === 'ai_text' || m.type === 'ai_clarification')
         .map((m) => ({
           role: m.type === 'user_text' ? 'user' : 'model',
           parts: [{ text: m.content ?? '' }],
@@ -65,11 +89,11 @@ export function ChatInterface() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: text || (imageBase64 ? 'Please style this look and find me similar purchasable items.' : ''),
+          message: requestText || (imageBase64 ? 'Please style this look and find me similar purchasable items.' : ''),
           imageBase64,
           imageMimeType,
           history,
-          profile: userProfile,
+          profile: effectiveProfile,
         }),
       })
 
@@ -95,6 +119,7 @@ export function ChatInterface() {
             text?: string
             products?: Product[]
             outfitBoard?: import('@/lib/types').OutfitBoard
+            clarification?: ClarificationPrompt
             hasBoard?: boolean
             error?: string
           }
@@ -123,11 +148,19 @@ export function ChatInterface() {
           } else if (event.type === 'result') {
             const sid = productStreamId
             useChatStore.setState((state) => ({
-              messages: state.messages.filter((m) => m.id !== loadingMsg.id && m.id !== sid),
+              messages: state.messages.filter((m) =>
+                m.id !== loadingMsg.id &&
+                m.id !== sid &&
+                m.id !== options?.resolvedClarificationId
+              ),
             }))
             productStreamId = null
             // Only show text response when there's no board — the board speaks for itself
-            if (event.text && !event.outfitBoard) addMessage({ type: 'ai_text', content: event.text })
+            if (event.clarification) {
+              addMessage({ type: 'ai_clarification', content: event.text, clarification: event.clarification })
+            } else if (event.text && !event.outfitBoard) {
+              addMessage({ type: 'ai_text', content: event.text })
+            }
             if (event.outfitBoard) {
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
               setCurrentBoard(event.outfitBoard)
@@ -148,14 +181,57 @@ export function ChatInterface() {
     }
   }
 
+  const handleClarificationSelect = (message: Message, groupId: string, optionId: string) => {
+    const clarification = message.clarification
+    if (!clarification || clarification.isSubmitting) return
+
+    const nextGroups = clarification.groups.map((group) =>
+      group.id === groupId ? { ...group, selectedOptionId: optionId } : group
+    )
+    const nextClarification: ClarificationPrompt = { ...clarification, groups: nextGroups }
+    updateMessage(message.id, { clarification: nextClarification })
+
+    const allSelected = nextGroups.every((group) => group.selectedOptionId)
+    if (!allSelected) return
+
+    const profilePatch = nextGroups.reduce<Partial<typeof userProfile>>((patch, group) => {
+      const selected = group.options.find((option) => option.id === group.selectedOptionId)
+      if (!selected?.profilePatch) return patch
+      return { ...patch, ...selected.profilePatch }
+    }, {})
+
+    if (Object.keys(profilePatch).length > 0) {
+      setUserProfile(profilePatch)
+    }
+
+    updateMessage(message.id, {
+      clarification: {
+        ...nextClarification,
+        isSubmitting: true,
+      },
+    })
+
+    handleSend('', undefined, undefined, undefined, {
+      silent: true,
+      overrideProfile: profilePatch,
+      resolvedClarificationId: message.id,
+      overrideText: occasionContext ?? undefined,
+    })
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ scrollbarWidth: 'thin' }}>
-        {(userProfile.mission || userProfile.budget || userProfile.size || userProfile.gender || userProfile.shoeSize || userProfile.occasionStrictness || userProfile.fitNotes) && (
+        {(userProfile.mission || userProfile.tripPreference || userProfile.budget || userProfile.size || userProfile.gender || userProfile.shoeSize || userProfile.occasionStrictness || userProfile.fitNotes) && (
           <div className="flex flex-wrap gap-2">
             {userProfile.mission && (
               <span className="rounded-full border border-[#E8A94A]/30 bg-[#E8A94A]/10 px-3 py-1 text-[11px] text-[#E8A94A]">
                 {getMissionTitle(userProfile.mission)}
+              </span>
+            )}
+            {userProfile.tripPreference && (
+              <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
+                {getTripPreferenceTitle(userProfile.tripPreference)}
               </span>
             )}
             {userProfile.budget && (
@@ -361,9 +437,13 @@ export function ChatInterface() {
           </div>
         )}
 
-        {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
-        ))}
+          {messages.map((message) => (
+            <ChatMessage
+              key={message.id}
+              message={message}
+              onClarificationSelect={handleClarificationSelect}
+            />
+          ))}
 
         <div ref={bottomRef} />
       </div>
