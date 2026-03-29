@@ -8,19 +8,19 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-[#0C0A09] text-white">
-      <nav className="flex items-center justify-between px-6 py-5 border-b border-white/5">
-        <Link href="/" className="text-white font-semibold tracking-tight">Wardrobr.ai</Link>
-        <Link href="/" className="text-white/50 text-sm hover:text-white transition-colors">← Home</Link>
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+      <nav className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
+        <Link href="/" className="text-[var(--text)] font-semibold tracking-tight">Wardrobr.ai</Link>
+        <Link href="/" className="text-[var(--text-muted)] text-sm hover:text-[var(--text)] transition-colors">← Home</Link>
       </nav>
 
       <main className="max-w-2xl mx-auto px-6 py-16">
-        <p className="text-white/30 text-xs uppercase tracking-[0.3em] mb-4">About</p>
-        <h1 className="font-display italic text-5xl text-white leading-none mb-8">
+        <p className="text-[var(--text-faint)] text-xs uppercase tracking-[0.3em] mb-4">About</p>
+        <h1 className="font-display italic text-5xl text-[var(--text)] leading-none mb-8">
           Style sorted,<br />instantly.
         </h1>
 
-        <div className="space-y-6 text-white/65 text-sm leading-relaxed">
+        <div className="space-y-6 text-[var(--text-muted)] text-sm leading-relaxed">
           <p>
             Wardrobr.ai is a free AI personal stylist built for real life and real budgets.
             Tell it where you&apos;re going, what you want to spend, or show it something you love —
@@ -37,8 +37,8 @@ export default function AboutPage() {
             across every occasion — from a quick weeknight dinner to a summer wedding.
           </p>
 
-          <div className="border-t border-white/8 pt-8 mt-8">
-            <h2 className="text-[#EDE0CE] text-base font-semibold mb-4">Affiliate disclosure</h2>
+          <div className="border-t border-[var(--border)] pt-8 mt-8">
+            <h2 className="text-[var(--text)] text-base font-semibold mb-4">Affiliate disclosure</h2>
             <p>
               Wardrobr.ai earns a small commission when you click a product link and make a purchase.
               This is how we keep the service free. It costs you nothing extra — the price you see
@@ -50,8 +50,8 @@ export default function AboutPage() {
             </p>
           </div>
 
-          <div className="border-t border-white/8 pt-8">
-            <h2 className="text-[#EDE0CE] text-base font-semibold mb-4">Get in touch</h2>
+          <div className="border-t border-[var(--border)] pt-8">
+            <h2 className="text-[var(--text)] text-base font-semibold mb-4">Get in touch</h2>
             <p>
               Questions, feedback, or press enquiries — we&apos;d love to hear from you.
             </p>
@@ -65,11 +65,11 @@ export default function AboutPage() {
         </div>
       </main>
 
-      <footer className="px-6 py-4 border-t border-white/5 flex items-center justify-between mt-12">
-        <span className="text-white/30 text-xs">© 2026 Wardrobr.ai</span>
+      <footer className="px-6 py-4 border-t border-[var(--border)] flex items-center justify-between mt-12">
+        <span className="text-[var(--text-faint)] text-xs">© 2026 Wardrobr.ai</span>
         <div className="flex gap-4">
-          <Link href="/about" className="text-white/30 text-xs hover:text-white/50 transition-colors">About</Link>
-          <Link href="/privacy" className="text-white/30 text-xs hover:text-white/50 transition-colors">Privacy</Link>
+          <Link href="/about" className="text-[var(--text-faint)] text-xs hover:text-[var(--text-muted)] transition-colors">About</Link>
+          <Link href="/privacy" className="text-[var(--text-faint)] text-xs hover:text-[var(--text-muted)] transition-colors">Privacy</Link>
         </div>
       </footer>
     </div>

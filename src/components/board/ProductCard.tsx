@@ -62,9 +62,9 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
   const showPlaceholder = !currentImage || imgFailed
 
   return (
-    <div className="group bg-zinc-900 rounded-2xl overflow-hidden border border-white/5 hover:border-white/15 transition-all duration-300">
+    <div className="group bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border)] hover:border-[var(--border-hover)] transition-all duration-300">
       {/* Product Image */}
-      <div className="aspect-[3/4] bg-zinc-800 overflow-hidden relative">
+      <div className="aspect-[3/4] bg-[var(--bg-subtle)] overflow-hidden relative">
         {showPlaceholder ? (
           <ImagePlaceholder category={product.category} />
         ) : (
@@ -110,7 +110,7 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
           <button
             onClick={() => onReplace(product)}
             disabled={isSwapping}
-            className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 text-white/70 hover:text-white text-xs px-2 py-1 rounded-lg border border-white/10 hover:border-white/30 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50 disabled:cursor-wait"
+            className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 text-[var(--text-muted)] hover:text-white text-xs px-2 py-1 rounded-lg border border-[var(--border)] hover:border-[var(--border-hover)] transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50 disabled:cursor-wait"
           >
             <RefreshCw className={`w-3 h-3 ${isSwapping ? 'animate-spin' : ''}`} />
             Replace
@@ -121,16 +121,16 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
       {/* Product Info */}
       <div className="p-2 space-y-1.5">
         <div>
-          <p className="text-white/40 text-[10px] uppercase tracking-wider font-medium leading-none">
+          <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider font-medium leading-none">
             {product.brand}
           </p>
-          <p className="text-white text-xs font-medium leading-tight mt-0.5 line-clamp-2">
+          <p className="text-[var(--text)] text-xs font-medium leading-tight mt-0.5 line-clamp-2">
             {product.name}
           </p>
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-white font-semibold text-xs">{formattedPrice}</p>
+          <p className="text-[var(--text)] font-semibold text-xs">{formattedPrice}</p>
           <a
             href={product.affiliateUrl}
             target="_blank"

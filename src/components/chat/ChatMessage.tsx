@@ -16,7 +16,7 @@ function PulsingDots() {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="block w-1 h-1 rounded-full bg-white/40"
+          className="block w-1 h-1 rounded-full bg-[var(--text-muted)]"
           animate={{ opacity: [0.2, 1, 0.2], scaleY: [0.6, 1.4, 0.6] }}
           transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
         />
@@ -47,7 +47,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -6 }}
               transition={{ duration: 0.25 }}
-              className="font-display italic text-white/40 text-sm"
+              className="font-display italic text-[var(--text-muted)] text-sm"
             >
               {message.content ?? 'Styling your look…'}
             </motion.p>
@@ -55,9 +55,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
         </div>
 
         {/* Thin shimmer bar */}
-        <div className="h-px w-40 bg-gradient-to-r from-transparent via-white/15 to-transparent overflow-hidden rounded-full">
+        <div className="h-px w-40 bg-gradient-to-r from-transparent via-[var(--border)] to-transparent overflow-hidden rounded-full">
           <motion.div
-            className="h-full w-1/3 bg-white/30 rounded-full"
+            className="h-full w-1/3 bg-[var(--text-muted)] rounded-full"
             animate={{ x: ['-100%', '400%'] }}
             transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
           />
@@ -83,7 +83,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         transition={{ duration: 0.3 }}
         className="py-1"
       >
-        <div className="font-display italic text-white/25 text-xs mb-2 flex items-center gap-2">
+        <div className="font-display italic text-[var(--text-faint)] text-xs mb-2 flex items-center gap-2">
           <PulsingDots />
           Finding pieces…
         </div>
@@ -115,8 +115,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
         className={`
           max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed
           ${isUser
-            ? 'bg-white text-black'
-            : 'bg-zinc-900 text-white/90 border border-white/5'
+            ? 'bg-[var(--text)] text-[var(--bg)]'
+            : 'bg-[var(--bg-card)] text-[var(--text)] border border-[var(--border)]'
           }
         `}
       >

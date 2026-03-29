@@ -54,7 +54,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
             <img
               src={imagePreview}
               alt="Selected"
-              className="h-16 w-16 object-cover rounded-xl border border-white/10"
+              className="h-16 w-16 object-cover rounded-xl border border-[var(--border)]"
             />
             <button
               onClick={() => {
@@ -62,12 +62,12 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
                 setImageMimeType(null)
                 setImagePreview(null)
               }}
-              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-zinc-800 border border-white/20 rounded-full flex items-center justify-center"
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-full flex items-center justify-center"
             >
-              <X className="w-3 h-3 text-white" />
+              <X className="w-3 h-3 text-[var(--text)]" />
             </button>
           </div>
-          <p className="text-white/40 text-xs mt-1">Image ready · add a message or send as-is</p>
+          <p className="text-[var(--text-muted)] text-xs mt-1">Image ready · add a message or send as-is</p>
         </div>
       )}
 
@@ -77,13 +77,13 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
       )}
 
       {/* Input bar */}
-      <div className="flex items-end gap-2 bg-[#1C1612] border border-white/20 rounded-2xl px-3 py-2.5 focus-within:border-[#E8A94A]/60 transition-colors shadow-lg shadow-black/40">
+      <div className="flex items-end gap-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-2xl px-3 py-2.5 focus-within:border-[#E8A94A]/60 transition-colors shadow-lg shadow-black/40">
         <button
           onClick={() => setShowImageUpload(!showImageUpload)}
           title="Upload a photo of a look to style"
           className={`
             flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors
-            ${showImageUpload ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'}
+            ${showImageUpload ? 'bg-[var(--border)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'}
           `}
         >
           <Camera className="w-4 h-4" />
@@ -96,7 +96,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
           onKeyDown={handleKeyDown}
           placeholder={placeholder ?? 'Describe your style or ask for an outfit...'}
           rows={1}
-          className="flex-1 bg-transparent text-white text-sm placeholder-white/45 resize-none outline-none leading-relaxed max-h-32 overflow-y-auto"
+          className="flex-1 bg-transparent text-[var(--text)] text-sm placeholder-[var(--text-muted)] resize-none outline-none leading-relaxed max-h-32 overflow-y-auto"
           style={{ scrollbarWidth: 'none' }}
         />
 
@@ -106,7 +106,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
           className={`
             flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all
             ${isLoading || (!text.trim() && !imageBase64)
-              ? 'text-white/20 cursor-not-allowed'
+              ? 'text-[var(--text-faint)] cursor-not-allowed'
               : 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]'
             }
           `}

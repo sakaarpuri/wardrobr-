@@ -161,8 +161,8 @@ export function ChatInterface() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center gap-5 px-4">
             <div className="space-y-1.5">
-              <p className="text-white/70 text-base font-medium">What are you dressing for?</p>
-              <p className="text-white/35 text-sm max-w-xs leading-relaxed">
+              <p className="text-[var(--text)] text-base font-medium">What are you dressing for?</p>
+              <p className="text-[var(--text-muted)] text-sm max-w-xs leading-relaxed">
                 Tell me the occasion, budget, size, or a brand for inspiration.
               </p>
             </div>
@@ -171,7 +171,7 @@ export function ChatInterface() {
             <div className="w-full max-w-xs space-y-3 text-left">
               {/* Gender */}
               <div>
-                <p className="text-white/25 text-xs uppercase tracking-wider mb-1.5">Shopping for</p>
+                <p className="text-[var(--text-faint)] text-xs uppercase tracking-wider mb-1.5">Shopping for</p>
                 <div className="flex gap-2">
                   {GENDER_OPTIONS.map((g) => (
                     <button
@@ -180,7 +180,7 @@ export function ChatInterface() {
                       className={`text-xs px-3.5 py-1.5 rounded-full border transition-all ${
                         userProfile.gender === g.toLowerCase()
                           ? 'border-[#E8A94A]/60 text-[#E8A94A] bg-[#E8A94A]/10'
-                          : 'border-white/12 text-white/45 hover:border-[#E8A94A]/35 hover:text-white/65'
+                          : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
                       }`}
                     >
                       {g}
@@ -191,7 +191,7 @@ export function ChatInterface() {
 
               {/* Size */}
               <div>
-                <p className="text-white/25 text-xs uppercase tracking-wider mb-1.5">UK size</p>
+                <p className="text-[var(--text-faint)] text-xs uppercase tracking-wider mb-1.5">UK size</p>
                 <div className="flex flex-wrap gap-2">
                   {SIZE_OPTIONS.map((s) => (
                     <button
@@ -200,7 +200,7 @@ export function ChatInterface() {
                       className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
                         userProfile.size === s
                           ? 'border-[#E8A94A]/60 text-[#E8A94A] bg-[#E8A94A]/10'
-                          : 'border-white/12 text-white/45 hover:border-[#E8A94A]/35 hover:text-white/65'
+                          : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
                       }`}
                     >
                       {s}
@@ -211,7 +211,7 @@ export function ChatInterface() {
 
               {/* Budget */}
               <div>
-                <p className="text-white/25 text-xs uppercase tracking-wider mb-1.5">Budget</p>
+                <p className="text-[var(--text-faint)] text-xs uppercase tracking-wider mb-1.5">Budget</p>
                 <div className="flex flex-wrap gap-2">
                   {BUDGET_OPTIONS.map((b) => (
                     <button
@@ -220,7 +220,7 @@ export function ChatInterface() {
                       className={`text-xs px-3.5 py-1.5 rounded-full border transition-all ${
                         userProfile.budget === b
                           ? 'border-[#E8A94A]/60 text-[#E8A94A] bg-[#E8A94A]/10'
-                          : 'border-white/12 text-white/45 hover:border-[#E8A94A]/35 hover:text-white/65'
+                          : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
                       }`}
                     >
                       {b}
@@ -241,7 +241,7 @@ export function ChatInterface() {
                 <button
                   key={suggestion}
                   onClick={() => handleSend(suggestion)}
-                  className="text-xs text-white/50 border border-white/12 rounded-full px-4 py-2 hover:border-white/30 hover:text-white/75 hover:bg-white/5 transition-all"
+                  className="text-xs text-[var(--text-muted)] border border-[var(--border)] rounded-full px-4 py-2 hover:border-[var(--border-hover)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)] transition-all"
                 >
                   {suggestion}
                 </button>
@@ -257,7 +257,7 @@ export function ChatInterface() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="px-4 pb-4 pt-2 border-t border-white/5">
+      <div className="px-4 pb-4 pt-2 border-t border-[var(--border)]">
         <ChatInput
           onSend={handleSend}
           isLoading={isLoading}

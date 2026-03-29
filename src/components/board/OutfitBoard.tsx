@@ -145,9 +145,9 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
         {/* Board Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-white font-semibold text-base">{board.title}</h3>
+            <h3 className="text-[var(--text)] font-semibold text-base">{board.title}</h3>
             {board.occasion && (
-              <p className="text-white/40 text-xs mt-0.5">{board.occasion}</p>
+              <p className="text-[var(--text-muted)] text-xs mt-0.5">{board.occasion}</p>
             )}
           </div>
 
@@ -166,7 +166,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
             <button
               onClick={handleShare}
               disabled={isSharing}
-              className="flex items-center gap-1.5 text-white/40 hover:text-white text-xs transition-colors p-1 disabled:opacity-40"
+              className="flex items-center gap-1.5 text-[var(--text-muted)] hover:text-[var(--text)] text-xs transition-colors p-1 disabled:opacity-40"
               title="Save as image"
             >
               {isSharing ? (
@@ -179,7 +179,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
 
             <button
               onClick={() => setShowEmailInput(!showEmailInput)}
-              className="flex items-center gap-1.5 text-white/40 hover:text-white text-xs transition-colors p-1"
+              className="flex items-center gap-1.5 text-[var(--text-muted)] hover:text-[var(--text)] text-xs transition-colors p-1"
               title="Email this board"
             >
               <Mail className="w-3.5 h-3.5" />
@@ -196,7 +196,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
             className="overflow-hidden"
           >
             {emailStatus === 'sent' ? (
-              <p className="text-white/60 text-xs py-2">
+              <p className="text-[var(--text-muted)] text-xs py-2">
                 ✓ Board sent to {email} — check your inbox
               </p>
             ) : (
@@ -207,7 +207,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
-                  className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs placeholder-white/30 outline-none focus:border-white/30"
+                  className="flex-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-[var(--text)] text-xs placeholder-[var(--text-faint)] outline-none focus:border-[var(--border-hover)]"
                 />
                 <button
                   type="submit"
@@ -243,7 +243,7 @@ export function OutfitBoard({ board, compact = false }: OutfitBoardProps) {
         </div>
 
         {/* Watermark */}
-        <p className="text-white/20 text-xs text-right">Styled by Wardrobr.ai</p>
+        <p className="text-[var(--text-faint)] text-xs text-right">Styled by Wardrobr.ai</p>
       </motion.div>
 
       {/* Swap Modal */}

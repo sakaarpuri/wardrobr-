@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Script from 'next/script'
 import { ArrowRight, MessageSquare, Camera, Shirt, Send, Mic } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 const MARQUEE_ITEMS = [
   'Summer Wedding', 'Job Interview', 'First Date', 'Weekend Brunch',
@@ -114,14 +115,14 @@ function HomepageInput() {
   return (
     <div className="w-full max-w-xl">
       {/* Main input */}
-      <div className="flex items-end gap-2 bg-[#1C1612] border border-white/20 rounded-2xl px-4 py-3.5 focus-within:border-[#E8A94A]/60 transition-colors shadow-lg shadow-black/40">
+      <div className="flex items-end gap-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-2xl px-4 py-3.5 focus-within:border-[#E8A94A]/60 transition-colors shadow-lg shadow-black/40">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKey}
           placeholder="Describe the occasion, budget, or a brand you love…"
           rows={1}
-          className="flex-1 bg-transparent text-white text-sm placeholder-white/45 resize-none outline-none leading-relaxed max-h-28 overflow-y-auto"
+          className="flex-1 bg-transparent text-[var(--text)] text-sm placeholder-[var(--text-muted)] resize-none outline-none leading-relaxed max-h-28 overflow-y-auto"
           style={{ scrollbarWidth: 'none' }}
         />
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -129,7 +130,7 @@ function HomepageInput() {
           <button
             onClick={() => fileInputRef.current?.click()}
             title="Upload a photo"
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)] transition-colors"
           >
             <Camera className="w-4 h-4" />
           </button>
@@ -137,7 +138,7 @@ function HomepageInput() {
             onClick={handleMic}
             title="Speak your request"
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-              isListening ? 'bg-white/15 text-white animate-pulse' : 'text-white/50 hover:text-white hover:bg-white/10'
+              isListening ? 'bg-[var(--border)] text-[var(--text)] animate-pulse' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]'
             }`}
           >
             <Mic className="w-4 h-4" />
@@ -146,7 +147,7 @@ function HomepageInput() {
             onClick={handleSend}
             disabled={!text.trim()}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-              text.trim() ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]' : 'text-white/20 cursor-not-allowed'
+              text.trim() ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]' : 'text-[var(--text-faint)] cursor-not-allowed'
             }`}
           >
             <Send className="w-3.5 h-3.5" />
@@ -160,7 +161,7 @@ function HomepageInput() {
           <button
             key={p}
             onClick={() => submit(p)}
-            className="text-xs text-white/45 border border-white/10 rounded-full px-3.5 py-1.5 hover:border-[#E8A94A]/50 hover:text-[#E8A94A] hover:bg-[#E8A94A]/5 transition-all"
+            className="text-xs text-[var(--text-muted)] border border-[var(--border)] rounded-full px-3.5 py-1.5 hover:border-[#E8A94A]/50 hover:text-[#E8A94A] hover:bg-[#E8A94A]/5 transition-all"
           >
             {p}
           </button>
@@ -168,7 +169,7 @@ function HomepageInput() {
       </div>
 
       {/* Feature hints */}
-      <p className="text-white/20 text-xs text-center mt-4 leading-relaxed">
+      <p className="text-[var(--text-faint)] text-xs text-center mt-4 leading-relaxed">
         Mention your size, budget, or a brand for inspiration — e.g. "size 10, The Row vibe, under £250"
       </p>
     </div>
@@ -189,14 +190,17 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-[var(--bg)] flex flex-col overflow-hidden">
 
       {/* Nav */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-5 border-b border-white/5">
-        <span className="text-white font-semibold tracking-tight">Wardrobr.ai</span>
-        <Link href="/style" className="text-white/50 text-sm hover:text-white transition-colors py-2 px-1">
-          Open stylist →
-        </Link>
+      <nav className="relative z-10 flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
+        <span className="text-[var(--text)] font-semibold tracking-tight">Wardrobr.ai</span>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link href="/style" className="text-[var(--text-muted)] text-sm hover:text-[var(--text)] transition-colors py-2 px-1">
+            Open stylist →
+          </Link>
+        </div>
       </nav>
 
       {/* Hero */}
@@ -206,7 +210,7 @@ export default function HomePage() {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, var(--dot-color) 1px, transparent 1px)',
             backgroundSize: '30px 30px',
           }}
         />
@@ -226,26 +230,26 @@ export default function HomePage() {
 
         {/* Headline */}
         <div className="relative z-10 mb-6">
-          <p className="text-white/30 text-xs uppercase tracking-[0.35em] font-medium mb-5">
+          <p className="text-[var(--text-faint)] text-xs uppercase tracking-[0.35em] font-medium mb-5">
             Free · No signup · UK stores
           </p>
           <h1 className="leading-none mb-3">
-            <span className="block text-white/45 font-sans font-light text-3xl sm:text-4xl tracking-tight mb-1">
+            <span className="block text-[var(--text-muted)] font-sans font-light text-3xl sm:text-4xl tracking-tight mb-1">
               Your outfit,
             </span>
             <span
-              className="font-display italic font-medium text-white"
+              className="font-display italic font-medium text-[var(--text)]"
               style={{ fontSize: 'clamp(5rem, 14vw, 10rem)', lineHeight: 1 }}
             >
               sorted.
             </span>
           </h1>
-          <p className="font-display italic text-white/35 text-xl sm:text-2xl mt-3">
+          <p className="font-display italic text-[var(--text-muted)] text-xl sm:text-2xl mt-3">
             any occasion. any budget.
           </p>
         </div>
 
-        <p className="relative z-10 text-white/45 text-sm max-w-xs leading-relaxed mb-8">
+        <p className="relative z-10 text-[var(--text-muted)] text-sm max-w-xs leading-relaxed mb-8">
           Tell me what you need — I&apos;ll pull a complete look from ASOS,
           H&amp;M, Zara, New Look and more. Shoppable immediately.
         </p>
@@ -258,12 +262,12 @@ export default function HomePage() {
         </div>
 
         {/* Marquee strip */}
-        <div className="relative z-10 w-screen -mx-6 border-y border-white/5 py-3 overflow-hidden mb-14">
+        <div className="relative z-10 w-screen -mx-6 border-y border-[var(--border)] py-3 overflow-hidden mb-14">
           <div className="animate-marquee flex gap-8 whitespace-nowrap w-max">
             {marqueeText.map((item, i) => (
-              <span key={i} className="text-white/20 text-xs uppercase tracking-widest font-medium flex-shrink-0">
+              <span key={i} className="text-[var(--text-faint)] text-xs uppercase tracking-widest font-medium flex-shrink-0">
                 {item}
-                <span className="mx-4 text-white/10">·</span>
+                <span className="mx-4 text-[var(--text-faint)]">·</span>
               </span>
             ))}
           </div>
@@ -275,7 +279,7 @@ export default function HomePage() {
             <Link
               key={title}
               href="/style"
-              className="group bg-[#100D0A] hover:bg-[#18120E] p-6 space-y-4 transition-colors"
+              className="group bg-[var(--bg-subtle)] hover:bg-[var(--bg-card)] p-6 space-y-4 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <span className="font-display italic text-[#E8A94A]/50 text-3xl leading-none group-hover:text-[#E8A94A]/80 transition-colors">{label}</span>
@@ -284,8 +288,8 @@ export default function HomePage() {
                 </div>
               </div>
               <div>
-                <p className="text-[#EDE0CE] text-sm font-semibold mb-1.5">{title}</p>
-                <p className="text-white/35 text-xs leading-relaxed">{body}</p>
+                <p className="text-[var(--text)] text-sm font-semibold mb-1.5">{title}</p>
+                <p className="text-[var(--text-muted)] text-xs leading-relaxed">{body}</p>
               </div>
             </Link>
           ))}
@@ -294,9 +298,9 @@ export default function HomePage() {
 
       {/* Example boards */}
       <div className="flex items-center gap-4 px-6 py-8 max-w-4xl mx-auto w-full">
-        <div className="flex-1 h-px bg-white/5" />
-        <span className="text-white/25 text-xs uppercase tracking-widest">Example boards</span>
-        <div className="flex-1 h-px bg-white/5" />
+        <div className="flex-1 h-px bg-[var(--border)]" />
+        <span className="text-[var(--text-faint)] text-xs uppercase tracking-widest">Example boards</span>
+        <div className="flex-1 h-px bg-[var(--border)]" />
       </div>
 
       <section className="px-6 pb-20">
@@ -305,19 +309,19 @@ export default function HomePage() {
             <button
               key={board.title}
               onClick={() => handleBoardClick(board.title)}
-              className="group bg-[#110D0A]/80 border border-white/5 hover:border-[#E8A94A]/25 rounded-2xl p-5 transition-all text-left w-full"
+              className="group bg-[var(--bg-card)] border border-[var(--border)] hover:border-[#E8A94A]/25 rounded-2xl p-5 transition-all text-left w-full"
             >
               <div className="flex items-start justify-between mb-4">
-                <h3 className="text-[#EDE0CE] text-sm font-semibold">{board.title}</h3>
-                <ArrowRight className="w-3.5 h-3.5 text-white/25 group-hover:text-white/50 transition-colors mt-0.5 flex-shrink-0" />
+                <h3 className="text-[var(--text)] text-sm font-semibold">{board.title}</h3>
+                <ArrowRight className="w-3.5 h-3.5 text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors mt-0.5 flex-shrink-0" />
               </div>
               <ul className="space-y-2">
                 {board.items.map((item) => (
-                  <li key={item} className="text-white/45 text-xs leading-snug">{item}</li>
+                  <li key={item} className="text-[var(--text-muted)] text-xs leading-snug">{item}</li>
                 ))}
               </ul>
-              <div className="mt-4 pt-4 border-t border-white/5">
-                <span className="text-white/25 text-xs font-display italic">Try this board →</span>
+              <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                <span className="text-[var(--text-faint)] text-xs font-display italic">Try this board →</span>
               </div>
             </button>
           ))}
@@ -325,19 +329,19 @@ export default function HomePage() {
       </section>
 
       {/* Affiliate disclosure */}
-      <div className="px-6 py-3 border-t border-white/5 text-center">
-        <p className="text-white/25 text-xs leading-relaxed max-w-xl mx-auto">
+      <div className="px-6 py-3 border-t border-[var(--border)] text-center">
+        <p className="text-[var(--text-faint)] text-xs leading-relaxed max-w-xl mx-auto">
           We earn a commission on purchases made through links on this site, at no extra cost to you.{' '}
-          <Link href="/about" className="text-white/40 hover:text-[#E8A94A] underline underline-offset-2 transition-colors">Learn more</Link>
+          <Link href="/about" className="text-[var(--text-muted)] hover:text-[#E8A94A] underline underline-offset-2 transition-colors">Learn more</Link>
         </p>
       </div>
 
-      <footer className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
-        <span className="text-white/30 text-xs">© 2026 Wardrobr.ai</span>
+      <footer className="px-6 py-4 border-t border-[var(--border)] flex items-center justify-between">
+        <span className="text-[var(--text-faint)] text-xs">© 2026 Wardrobr.ai</span>
         <div className="flex items-center gap-4">
-          <Link href="/about" className="text-white/30 text-xs hover:text-white/50 transition-colors">About</Link>
-          <Link href="/privacy" className="text-white/30 text-xs hover:text-white/50 transition-colors">Privacy</Link>
-          <a href="https://sovrn.co/zs04ts3" className="text-white/30 text-xs hover:text-white/50 transition-colors">Affiliate links</a>
+          <Link href="/about" className="text-[var(--text-faint)] text-xs hover:text-[var(--text-muted)] transition-colors">About</Link>
+          <Link href="/privacy" className="text-[var(--text-faint)] text-xs hover:text-[var(--text-muted)] transition-colors">Privacy</Link>
+          <a href="https://sovrn.co/zs04ts3" className="text-[var(--text-faint)] text-xs hover:text-[var(--text-muted)] transition-colors">Affiliate links</a>
         </div>
       </footer>
     </div>
