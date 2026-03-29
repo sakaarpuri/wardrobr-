@@ -15,6 +15,14 @@ const STARTER_REQUESTS = [
   'Match this photo for less',
 ]
 
+function getLatestUserRequest(messages: Message[]): string | null {
+  return [...messages]
+    .reverse()
+    .find((message) => message.type === 'user_text' && message.content?.trim())
+    ?.content
+    ?.trim() ?? null
+}
+
 export function ChatInterface() {
   const {
     messages,
@@ -237,11 +245,13 @@ export function ChatInterface() {
       },
     })
 
+    const baseRequest = occasionContext ?? getLatestUserRequest(messages)
+
     handleSend('', undefined, undefined, undefined, {
       silent: true,
       overrideProfile: profilePatch,
       resolvedClarificationId: message.id,
-      overrideText: occasionContext ?? undefined,
+      overrideText: baseRequest ?? undefined,
     })
   }
 

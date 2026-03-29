@@ -386,10 +386,13 @@ function CapabilityStrip() {
 
 export default function HomePage() {
   const router = useRouter()
-  const { setPendingMessage, clearChat } = useChatStore()
+  const { setPendingMessage, clearChat, setOccasionContext } = useChatStore()
   const handleSubmit = (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => {
     if (!message.trim() && !imageBase64) return
     clearChat()
+    if (message.trim()) {
+      setOccasionContext(message.trim())
+    }
     setPendingMessage({ text: message.trim(), imageBase64, imageMimeType, imagePreview })
     router.push('/style')
   }
