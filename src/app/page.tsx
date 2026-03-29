@@ -5,23 +5,48 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Script from 'next/script'
-import { ArrowRight, Camera, Mic, Send } from 'lucide-react'
+import { Camera, Mic, Send, Sparkles, Wand2 } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 import { APP_VERSION } from '@/lib/version'
 
-const EXAMPLE_PROMPTS = [
+const SPOKEN_PROMPTS = [
+  'I need a night out look, under sixty quid',
+  'Find me a wedding guest outfit under one-fifty',
   'Trip to India in summer',
-  'Wedding guest look under £150',
-  'One great blazer for work',
   'Style these trainers for a city break',
 ]
 
-const TRUST_POINTS = [
-  'Voice-first route in',
-  'Live product picks from UK stores',
-  'Direct retailer links when available',
+const OCCASIONS = [
+  'Summer wedding',
+  'Job interview',
+  'First date',
+  'Weekend brunch',
+  'Gallery opening',
+  'Garden party',
+  'Business casual',
+  'Holiday capsule',
+  'Night out',
+  'Dinner party',
+]
+
+const CAPABILITIES = [
+  {
+    title: 'Talk',
+    body: 'Say the brief naturally and let the stylist turn it into a shopping plan.',
+    icon: Mic,
+  },
+  {
+    title: 'Photo',
+    body: 'Drop in a look you love and match the feel with real products.',
+    icon: Camera,
+  },
+  {
+    title: 'Refine',
+    body: 'Tighten budget, size, or vibe once the first results land.',
+    icon: Wand2,
+  },
 ]
 
 function formatPrice(value: number) {
@@ -32,21 +57,13 @@ function formatPrice(value: number) {
   }).format(value)
 }
 
-function HomepageInput() {
+function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => void }) {
   const [text, setText] = useState('')
   const [isListening, setIsListening] = useState(false)
+  const [showTypedFallback, setShowTypedFallback] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
-  const { setPendingMessage, clearChat } = useChatStore()
 
-  const submit = (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => {
-    if (!message.trim() && !imageBase64) return
-    clearChat()
-    setPendingMessage({ text: message.trim(), imageBase64, imageMimeType, imagePreview })
-    router.push('/style')
-  }
-
-  const handleSend = () => submit(text)
+  const handleSend = () => onSubmit(text)
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -62,7 +79,7 @@ function HomepageInput() {
     reader.onload = () => {
       const dataUrl = reader.result as string
       const base64 = dataUrl.split(',')[1]
-      submit(text || 'Style this look and find me similar purchasable items.', base64, file.type, dataUrl)
+      onSubmit(text || 'Style this look and find me similar purchasable items.', base64, file.type, dataUrl)
     }
     reader.readAsDataURL(file)
   }
@@ -81,7 +98,7 @@ function HomepageInput() {
       const transcript = e.results[0][0].transcript
       setText(transcript)
       setIsListening(false)
-      submit(transcript)
+      onSubmit(transcript)
     }
     recognition.onerror = () => setIsListening(false)
     recognition.onend = () => setIsListening(false)
@@ -89,151 +106,302 @@ function HomepageInput() {
   }
 
   return (
-    <div className="w-full max-w-4xl rounded-[36px] border border-[var(--border)] bg-[linear-gradient(145deg,rgba(255,255,255,0.9),rgba(240,235,225,0.82))] p-4 shadow-[0_30px_110px_rgba(15,23,42,0.10)] backdrop-blur-xl sm:p-6">
+    <div className="w-full max-w-4xl rounded-[36px] border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(240,235,225,0.82))] p-4 shadow-[0_30px_110px_rgba(15,23,42,0.10)] backdrop-blur-xl sm:p-6">
       <div className="space-y-6">
         <div className="flex flex-col gap-2 text-left sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-              Voice First
+              Voice-first stylist
             </p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl">
-              Start with the mic. Everything else is optional.
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)] sm:text-3xl">
+              Start with your voice, then refine if you want to.
             </h2>
-            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
-              Say the trip, event, vibe, or one item you need. Wardrobr should feel like talking to an AI stylist, not stepping through a setup form.
-            </p>
           </div>
-          <p className="text-xs text-[var(--text-faint)] sm:max-w-[180px] sm:text-right">
-            Filters and starter links live on the next screen.
+          <p className="text-xs text-[var(--text-faint)] sm:max-w-[240px] sm:text-right">
+            The quickest route in is the mic. Typing and photo matching stay here as backup.
           </p>
         </div>
 
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+
         <button
           onClick={handleMic}
-          className={`relative w-full overflow-hidden rounded-[32px] border px-5 py-5 text-left transition-all sm:px-6 sm:py-6 ${
+          className={`relative w-full overflow-hidden rounded-[32px] border px-5 py-6 text-center transition-all sm:px-8 sm:py-8 ${
             isListening
-              ? 'border-[#E8A94A]/60 bg-[linear-gradient(135deg,rgba(232,169,74,0.18),rgba(120,215,255,0.12))] shadow-[0_20px_60px_rgba(74,144,226,0.16)]'
-              : 'border-[rgba(72,134,255,0.18)] bg-[linear-gradient(135deg,rgba(82,126,255,0.16),rgba(104,220,255,0.12),rgba(255,255,255,0.22))] hover:border-[rgba(72,134,255,0.34)] hover:shadow-[0_22px_70px_rgba(49,98,255,0.14)]'
+              ? 'border-[#E8A94A]/60 bg-[linear-gradient(135deg,rgba(232,169,74,0.20),rgba(120,215,255,0.14))] shadow-[0_24px_70px_rgba(74,144,226,0.18)]'
+              : 'border-[rgba(72,134,255,0.20)] bg-[linear-gradient(135deg,rgba(82,126,255,0.18),rgba(104,220,255,0.14),rgba(255,255,255,0.24))] hover:border-[rgba(72,134,255,0.34)] hover:shadow-[0_24px_80px_rgba(49,98,255,0.14)]'
           }`}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,215,255,0.24),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(255,211,144,0.20),transparent_36%)]" />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-4">
-              <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full border backdrop-blur-sm ${isListening ? 'border-[#E8A94A]/55 bg-[#E8A94A]/18' : 'border-[rgba(82,126,255,0.24)] bg-white/60'}`}>
-                <Mic className={`h-6 w-6 ${isListening ? 'animate-pulse text-[#E8A94A]' : 'text-[var(--text)]'}`} />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-                  Main Route In
-                </p>
-                <h3 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text)]">
-                  {isListening ? 'Listening now...' : 'Tap and speak your brief'}
-                </h3>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
-                  {isListening
-                    ? 'Keep talking. We will send your brief as soon as you stop.'
-                    : 'Try: “Trip to India in summer,” “Need a wedding guest look under £150,” or “Find me one great blazer for work.”'}
-                </p>
-              </div>
+          <div className="relative flex flex-col items-center gap-4">
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(82,126,255,0.22)] bg-white/72 backdrop-blur-sm sm:h-24 sm:w-24">
+              <span className={`absolute inset-[-10px] rounded-full border ${isListening ? 'border-[#E8A94A]/40 animate-ping' : 'border-[rgba(82,126,255,0.18)]'}`} />
+              <Mic className={`h-8 w-8 ${isListening ? 'animate-pulse text-[#E8A94A]' : 'text-[var(--text)]'}`} />
             </div>
-
-            <div className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
-              <span className="rounded-full border border-[rgba(82,126,255,0.22)] bg-white/65 px-3 py-1.5 backdrop-blur-sm">
-                {isListening ? 'Stop speaking to send' : 'Tap to speak'}
-              </span>
-              <ArrowRight className="h-4 w-4 text-[#E8A94A]" />
+            <div>
+              <p className="text-2xl font-semibold tracking-tight text-[var(--text)]">
+                {isListening ? 'Listening now...' : 'Tap to talk to your stylist'}
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
+                {isListening
+                  ? 'Try saying your size, budget, or a brand, like “size 10, something with a Row vibe, under two-fifty”.'
+                  : 'Say the trip, event, vibe, or one item you need. The mic is the main way in.'}
+              </p>
             </div>
           </div>
         </button>
 
-        <div className="rounded-[28px] border border-[var(--border)] bg-[rgba(255,255,255,0.72)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm sm:px-5 sm:py-5">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
-                Or type / add a photo
-              </p>
-              <span className="text-[11px] text-[var(--text-faint)]">Backup route</span>
-            </div>
-
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="Type the brief here if speaking is awkward..."
-              rows={2}
-              className="min-h-[72px] flex-1 resize-none bg-transparent text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
-              style={{ scrollbarWidth: 'none' }}
-            />
-
-            <div className="flex flex-col gap-3 border-t border-[var(--border)] pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-1.5">
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Upload a photo"
-                  className="flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]"
-                >
-                  <Camera className="h-4 w-4" />
-                  Photo
-                </button>
-                <Link
-                  href="/style"
-                  className="flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]"
-                >
-                  Controls
-                </Link>
+        <div className="space-y-3">
+          <div className="hidden rounded-[28px] border border-[var(--border)] bg-white/72 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm sm:block sm:px-5">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
+                  Or type / add a photo
+                </p>
+                <span className="text-[11px] text-[var(--text-faint)]">Fallback route</span>
               </div>
 
-              <button
-                onClick={handleSend}
-                disabled={!text.trim()}
-                className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-all ${
-                  text.trim() ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]' : 'cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-faint)]'
-                }`}
-              >
-                See my picks
-                <Send className="h-4 w-4" />
-              </button>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={handleKey}
+                placeholder="Or type here..."
+                rows={2}
+                className="min-h-[72px] flex-1 resize-none bg-transparent text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
+                style={{ scrollbarWidth: 'none' }}
+              />
+
+              <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload a photo"
+                    className="flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Photo
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleSend}
+                  disabled={!text.trim()}
+                  className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-all ${
+                    text.trim() ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]' : 'cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-faint)]'
+                  }`}
+                >
+                  See my picks
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
             </div>
+          </div>
+
+          <div className="sm:hidden">
+            {!showTypedFallback ? (
+              <button
+                onClick={() => setShowTypedFallback(true)}
+                className="rounded-full border border-[var(--border)] bg-white/70 px-4 py-2 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
+              >
+                Or type instead
+              </button>
+            ) : (
+              <div className="rounded-[24px] border border-[var(--border)] bg-white/72 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm">
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder="Or type here..."
+                  rows={2}
+                  className="min-h-[72px] w-full resize-none bg-transparent text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
+                />
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Photo
+                  </button>
+                  <button
+                    onClick={handleSend}
+                    disabled={!text.trim()}
+                    className={`inline-flex h-10 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-all ${
+                      text.trim() ? 'bg-[#E8A94A] text-[#1A0E00]' : 'cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-faint)]'
+                    }`}
+                  >
+                    See picks
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 text-left">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
+            Or try saying...
+          </p>
           <div className="flex flex-wrap gap-2">
-            {EXAMPLE_PROMPTS.map((prompt) => (
+            {SPOKEN_PROMPTS.map((prompt) => (
               <button
                 key={prompt}
-                onClick={() => submit(prompt)}
-                className="rounded-full border border-[var(--border)] bg-[var(--bg)] px-3.5 py-1.5 text-xs text-[var(--text-muted)] transition-all hover:border-[#E8A94A]/50 hover:bg-[#E8A94A]/5 hover:text-[#E8A94A]"
+                onClick={() => onSubmit(prompt)}
+                className="rounded-full border border-[var(--border)] bg-white/78 px-3.5 py-1.5 text-xs text-[var(--text-muted)] transition-all hover:border-[#E8A94A]/50 hover:bg-[#E8A94A]/5 hover:text-[#E8A94A]"
               >
-                {prompt}
+                “{prompt}”
               </button>
             ))}
           </div>
-
-          <p className="text-xs leading-relaxed text-[var(--text-faint)]">
-            Budget, size, gender, and starter boards live on the results page so they help without slowing the route in.
-          </p>
         </div>
       </div>
     </div>
   )
 }
 
+function ProofBoard() {
+  const board = EXAMPLE_BOARDS[1] ?? EXAMPLE_BOARDS[0]
+
+  return (
+    <section className="px-6 pb-10">
+      <div className="mx-auto max-w-5xl rounded-[32px] border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] sm:p-6">
+        <div className="flex flex-col gap-3 text-left sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-faint)]">What you&apos;ll get</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)]">Your look, ready to shop.</h2>
+          </div>
+          <p className="max-w-lg text-sm leading-relaxed text-[var(--text-muted)]">
+            The result is a real board with product cards, live prices, store links, and a total, not a vague moodboard.
+          </p>
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4 sm:p-5">
+            <div className="grid grid-cols-2 gap-3">
+              {board.board.products.slice(0, 4).map((product) => (
+                <div key={product.id} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)]">
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)]">
+                    <Image
+                      src={product.imageUrl}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 25vw"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="space-y-1 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-faint)]">{product.brand}</p>
+                    <p className="line-clamp-2 text-xs font-medium leading-snug text-[var(--text)]">{product.name}</p>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-xs font-semibold text-[var(--text)]">{formatPrice(product.price)}</span>
+                      <span className="text-[10px] text-[var(--text-faint)]">Shop</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[28px] border border-[var(--border)] bg-[linear-gradient(145deg,rgba(82,126,255,0.10),rgba(255,255,255,0.85))] p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">Example result</p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)]">{board.title}</h3>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">{board.board.styleNote}</p>
+
+            <div className="mt-5 space-y-3 text-sm">
+              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-4 py-3">
+                <span className="text-[var(--text-muted)]">Stores</span>
+                <span className="font-medium text-[var(--text)]">ASOS, Zara, H&amp;M, more</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-4 py-3">
+                <span className="text-[var(--text-muted)]">Pieces</span>
+                <span className="font-medium text-[var(--text)]">{board.board.products.length} shoppable picks</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-4 py-3">
+                <span className="text-[var(--text-muted)]">Total</span>
+                <span className="font-medium text-[var(--text)]">{formatPrice(board.board.totalPrice ?? 0)}</span>
+              </div>
+            </div>
+
+            <Link
+              href={`/board/${board.id}`}
+              className="mt-5 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2 text-sm text-[var(--text)] transition-colors hover:border-[#E8A94A]/40"
+            >
+              See exact example board
+              <Sparkles className="h-4 w-4 text-[#E8A94A]" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function OccasionTicker({ onSubmit }: { onSubmit: (message: string) => void }) {
+  return (
+    <section className="px-6 pb-10">
+      <div className="mx-auto max-w-5xl">
+        <p className="mb-3 text-xs uppercase tracking-[0.28em] text-[var(--text-faint)]">Occasions we can sort</p>
+        <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+          {OCCASIONS.map((occasion) => (
+            <button
+              key={occasion}
+              onClick={() => onSubmit(`${occasion} outfit`)}
+              className="whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2 text-sm text-[var(--text-muted)] transition-all hover:border-[#E8A94A]/45 hover:text-[var(--text)]"
+            >
+              {occasion}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CapabilityStrip() {
+  return (
+    <section className="px-6 pb-20">
+      <div className="mx-auto grid max-w-5xl gap-3 md:grid-cols-3">
+        {CAPABILITIES.map((item) => {
+          const Icon = item.icon
+          return (
+            <div
+              key={item.title}
+              className="flex items-start gap-3 rounded-[24px] border border-[var(--border)] bg-[var(--bg-card)] px-4 py-4"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(135deg,rgba(82,126,255,0.12),rgba(104,220,255,0.08))]">
+                <Icon className="h-4 w-4 text-[var(--text)]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--text)]">{item.title}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">{item.body}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 export default function HomePage() {
+  const router = useRouter()
+  const { setPendingMessage, clearChat } = useChatStore()
+  const handleSubmit = (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => {
+    if (!message.trim() && !imageBase64) return
+    clearChat()
+    setPendingMessage({ text: message.trim(), imageBase64, imageMimeType, imagePreview })
+    router.push('/style')
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg)] flex flex-col overflow-hidden">
       <nav className="relative z-10 flex items-center justify-between border-b border-[var(--border)] px-6 py-5">
         <span className="text-[var(--text)] font-semibold tracking-tight">Wardrobr.ai</span>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Link href="/style" className="px-1 py-2 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]">
-            Open stylist →
-          </Link>
-        </div>
+        <ThemeToggle />
       </nav>
 
-      <main className="relative flex-1 px-6 pt-14 pb-14 text-center sm:pt-18">
+      <main className="relative px-6 pt-14 pb-10 text-center sm:pt-18">
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -241,7 +409,6 @@ export default function HomePage() {
             backgroundSize: '30px 30px',
           }}
         />
-
         <div
           className="animate-breathe absolute pointer-events-none"
           style={{
@@ -269,106 +436,30 @@ export default function HomePage() {
 
         <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center">
           <div className="max-w-3xl">
-            <p className="mb-5 text-xs font-medium uppercase tracking-[0.35em] text-[var(--text-faint)]">
-              Free · No signup · UK stores
-            </p>
-            <h1 className="leading-none">
-              <span className="mb-2 block text-3xl font-light tracking-tight text-[var(--text-muted)] sm:text-4xl">
-                Say the brief,
-              </span>
-              <span
-                className="font-display italic font-medium text-[var(--text)]"
-                style={{ fontSize: 'clamp(4.5rem, 13vw, 9.5rem)', lineHeight: 0.95 }}
-              >
-                get sorted.
-              </span>
+            <p className="mb-4 text-sm font-medium text-[var(--text-faint)]">Your outfit, sorted.</p>
+            <h1 className="text-balance text-4xl font-semibold tracking-tight text-[var(--text)] sm:text-6xl">
+              Tell me what you&apos;re dressing for and I&apos;ll find a full shoppable outfit from UK stores in seconds.
             </h1>
-            <p className="mt-4 text-xl font-display italic text-[var(--text-muted)] sm:text-2xl">
-              An AI stylist you talk to, not a flow you fill out.
-            </p>
-            <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)] sm:text-[15px]">
-              Start by speaking the trip, event, vibe, or item you need. Wardrobr turns that brief into live shopping results, asks only the fewest necessary follow-ups, and keeps the path to buying clean.
+            <p className="mt-4 text-sm leading-relaxed text-[var(--text-muted)] sm:text-base">
+              Free · No signup · Real products from ASOS, H&amp;M, Zara &amp; more
             </p>
           </div>
 
           <div className="mt-10 w-full">
-            <HomepageInput />
+            <HomeHero onSubmit={handleSubmit} />
             <Script src="https://sovrn.co/zs04ts3" strategy="afterInteractive" />
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
-            {TRUST_POINTS.map((point) => (
-              <div
-                key={point}
-                className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2 text-xs text-[var(--text-muted)] shadow-[0_10px_35px_rgba(26,14,0,0.04)]"
-              >
-                {point}
-              </div>
-            ))}
           </div>
         </div>
       </main>
 
-      <section className="px-6 pb-20">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-8 flex flex-col gap-3 text-left sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-faint)]">Exact example looks</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)]">See what “sorted” looks like.</h2>
-            </div>
-            <p className="max-w-lg text-sm leading-relaxed text-[var(--text-muted)]">
-              These open exact saved boards, with total price and direct retailer links where available.
-            </p>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-3">
-            {EXAMPLE_BOARDS.map((board) => (
-              <Link
-                key={board.title}
-                href={`/board/${board.id}`}
-                className="group w-full overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)] text-left transition-all hover:border-[#E8A94A]/25 hover:shadow-[0_24px_70px_rgba(26,14,0,0.08)]"
-              >
-                <div className="relative aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)]">
-                  <Image
-                    src={board.board.products[0]?.imageUrl}
-                    alt={board.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
-                  <div className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/25 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/85 backdrop-blur-sm">
-                    {board.kicker}
-                  </div>
-                  <div className="absolute inset-x-4 bottom-4">
-                    <h3 className="text-xl font-semibold tracking-tight text-white">{board.title}</h3>
-                    <p className="mt-1 text-sm text-white/80">
-                      {board.board.products.length}-piece look · {formatPrice(board.board.totalPrice ?? 0)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-5">
-                  <p className="text-sm leading-relaxed text-[var(--text-muted)]">
-                    {board.board.styleNote}
-                  </p>
-                  <div className="mt-4 flex items-center justify-between border-t border-[var(--border)] pt-4">
-                    <span className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--text-faint)]">
-                      Shop this exact look
-                    </span>
-                    <ArrowRight className="h-4 w-4 text-[var(--text-faint)] transition-colors group-hover:text-[var(--text)]" />
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      <ProofBoard />
+      <OccasionTicker onSubmit={handleSubmit} />
+      <CapabilityStrip />
 
       <div className="border-t border-[var(--border)] px-6 py-3 text-center">
         <p className="mx-auto max-w-xl text-xs leading-relaxed text-[var(--text-faint)]">
           We earn a commission on purchases made through links on this site, at no extra cost to you.{` `}
-          <Link href="/about" className="underline underline-offset-2 transition-colors hover:text-[#E8A94A] text-[var(--text-muted)]">
+          <Link href="/about" className="text-[var(--text-muted)] underline underline-offset-2 transition-colors hover:text-[#E8A94A]">
             Learn more
           </Link>
         </p>
