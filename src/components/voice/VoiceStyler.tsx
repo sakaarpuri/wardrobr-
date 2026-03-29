@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Mic, MicOff, X } from 'lucide-react'
+import { Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
-import { Product } from '@/lib/types'
+import { ClarificationPrompt, Product } from '@/lib/types'
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'error'
 
-// Type augments for Web Speech API (not in default lib.dom.d.ts in all envs)
 declare global {
   interface Window {
     SpeechRecognition?: new () => SpeechRecognition
@@ -55,7 +54,13 @@ export function VoiceStyler() {
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const finalTranscriptRef = useRef('')
 
-  const { addMessage, setLoading, setCurrentBoard, setOccasionContext } = useChatStore()
+  const {
+    addMessage,
+    setLoading,
+    setCurrentBoard,
+    setOccasionContext,
+    userProfile,
+  } = useChatStore()
 
   useEffect(() => {
     const supported = !!(window.SpeechRecognition ?? window.webkitSpeechRecognition)
@@ -67,7 +72,6 @@ export function VoiceStyler() {
     recognitionRef.current = null
   }, [])
 
-  /** Run the style request using the same SSE pipeline as text chat */
   const runStyleRequest = useCallback(async (text: string) => {
     if (!text.trim()) {
       setVoiceState('idle')
@@ -85,16 +89,16 @@ export function VoiceStyler() {
 
     try {
       const history = useChatStore.getState().messages
-        .filter((m) => m.type === 'user_text' || m.type === 'ai_text')
-        .map((m) => ({
-          role: m.type === 'user_text' ? 'user' : 'model',
-          parts: [{ text: m.content ?? '' }],
+        .filter((message) => message.type === 'user_text' || message.type === 'ai_text' || message.type === 'ai_clarification')
+        .map((message) => ({
+          role: message.type === 'user_text' ? 'user' : 'model',
+          parts: [{ text: message.content ?? '' }],
         }))
 
       const response = await fetch('/api/style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({ message: text, history, profile: userProfile }),
       })
 
       if (!response.ok || !response.body) throw new Error('Request failed')
@@ -113,47 +117,56 @@ export function VoiceStyler() {
 
         for (const chunk of chunks) {
           if (!chunk.startsWith('data: ')) continue
+
           let event: {
             type: string
             text?: string
             products?: Product[]
             outfitBoard?: import('@/lib/types').OutfitBoard
+            clarification?: ClarificationPrompt
             error?: string
           }
-          try { event = JSON.parse(chunk.slice(6)) } catch { continue }
+
+          try {
+            event = JSON.parse(chunk.slice(6))
+          } catch {
+            continue
+          }
 
           if (event.type === 'status' && event.text) {
             useChatStore.setState((state) => ({
-              messages: state.messages.map((m) =>
-                m.id === loadingMsg.id ? { ...m, content: event.text } : m
+              messages: state.messages.map((message) =>
+                message.id === loadingMsg.id ? { ...message, content: event.text } : message
               ),
             }))
           } else if (event.type === 'products') {
             const incoming = event.products ?? []
             if (incoming.length === 0) continue
+
             if (!productStreamId) {
               const streamMsg = addMessage({ type: 'ai_product_stream', products: incoming })
               productStreamId = streamMsg.id
             } else {
               const sid = productStreamId
               useChatStore.setState((state) => ({
-                messages: state.messages.map((m) =>
-                  m.id === sid ? { ...m, products: [...(m.products ?? []), ...incoming] } : m
+                messages: state.messages.map((message) =>
+                  message.id === sid ? { ...message, products: [...(message.products ?? []), ...incoming] } : message
                 ),
               }))
             }
           } else if (event.type === 'result') {
             const sid = productStreamId
             useChatStore.setState((state) => ({
-              messages: state.messages.filter(
-                (m) => m.id !== loadingMsg.id && m.id !== sid
-              ),
+              messages: state.messages.filter((message) => message.id !== loadingMsg.id && message.id !== sid),
             }))
             productStreamId = null
 
-            if (event.text) {
+            if (event.clarification) {
+              addMessage({ type: 'ai_clarification', content: event.text, clarification: event.clarification })
+            } else if (event.text && !event.outfitBoard) {
               addMessage({ type: 'ai_text', content: event.text })
             }
+
             if (event.outfitBoard) {
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
               setCurrentBoard(event.outfitBoard)
@@ -165,9 +178,7 @@ export function VoiceStyler() {
       }
     } catch {
       useChatStore.setState((state) => ({
-        messages: state.messages.filter(
-          (m) => m.id !== loadingMsg.id && m.id !== productStreamId
-        ),
+        messages: state.messages.filter((message) => message.id !== loadingMsg.id && message.id !== productStreamId),
       }))
       addMessage({ type: 'ai_text', content: "Sorry, I couldn't process that. Please try again." })
     } finally {
@@ -176,15 +187,13 @@ export function VoiceStyler() {
       setTranscript('')
       finalTranscriptRef.current = ''
     }
-  }, [addMessage, setCurrentBoard, setLoading, setOccasionContext])
+  }, [addMessage, setCurrentBoard, setLoading, setOccasionContext, userProfile])
 
   const submitNow = useCallback(() => {
-    // User tapped the mic button to explicitly stop and send
     const text = finalTranscriptRef.current.trim()
     stopListening()
-    if (text) {
-      runStyleRequest(text)
-    } else {
+    if (text) runStyleRequest(text)
+    else {
       setVoiceState('idle')
       setTranscript('')
     }
@@ -192,7 +201,10 @@ export function VoiceStyler() {
 
   const startListening = useCallback(() => {
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition
-    if (!SR) { setIsSupported(false); return }
+    if (!SR) {
+      setIsSupported(false)
+      return
+    }
 
     const recognition = new SR()
     recognition.continuous = false
@@ -205,9 +217,9 @@ export function VoiceStyler() {
       let interim = ''
       let final = ''
       for (let i = 0; i < e.results.length; i++) {
-        const r = e.results[i]
-        if (r.isFinal) final += r[0].transcript
-        else interim += r[0].transcript
+        const result = e.results[i]
+        if (result.isFinal) final += result[0].transcript
+        else interim += result[0].transcript
       }
       if (final) finalTranscriptRef.current = final
       setTranscript(final || interim)
@@ -219,9 +231,8 @@ export function VoiceStyler() {
 
     recognition.onend = () => {
       const text = finalTranscriptRef.current.trim()
-      if (text) {
-        runStyleRequest(text)
-      } else {
+      if (text) runStyleRequest(text)
+      else {
         setVoiceState('idle')
         setTranscript('')
       }
@@ -244,64 +255,129 @@ export function VoiceStyler() {
 
   useEffect(() => () => { stopListening() }, [stopListening])
 
-  if (!isSupported) return null
-
-  // ─── Idle: floating mic FAB ────────────────────────────────────────────────
-  if (voiceState === 'idle') {
+  if (!isSupported) {
     return (
-      <button
-        onClick={startListening}
-        className="fixed bottom-24 right-4 z-50 w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-xl hover:bg-white/90 active:scale-95 transition-all"
-        aria-label="Start voice styling"
-        title="Tap, speak your request, stop speaking to send"
-      >
-        <Mic className="w-6 h-6" />
-      </button>
+      <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)] p-5">
+        <p className="text-sm font-semibold text-[var(--text)]">Voice needs Safari or Chrome.</p>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+          You can still type or upload a photo below.
+        </p>
+      </div>
     )
   }
 
-  // ─── Active: transcript + controls ─────────────────────────────────────────
   return (
-    <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-3 w-72">
-      {transcript && (
-        <div className="bg-white/10 backdrop-blur-sm text-white text-sm rounded-2xl rounded-br-sm px-4 py-2.5 border border-white/10 leading-snug self-end max-w-full">
-          {transcript}
+    <div className="rounded-[30px] border border-[rgba(82,126,255,0.18)] bg-[linear-gradient(135deg,rgba(82,126,255,0.16),rgba(104,220,255,0.12),rgba(255,255,255,0.22))] p-5 shadow-[0_24px_70px_rgba(49,98,255,0.12)] backdrop-blur-xl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
+            Voice Stylist
+          </p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--text)]">
+            Talk to Wardrobr
+          </h2>
         </div>
-      )}
-
-      <div className="flex items-center gap-2 self-end">
-        <button
-          onClick={cancel}
-          className="w-10 h-10 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full flex items-center justify-center hover:bg-red-500/20 active:scale-95 transition-all"
-          aria-label="Cancel"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        <button
-          onClick={voiceState === 'listening' ? submitNow : undefined}
-          disabled={voiceState === 'processing'}
-          aria-label={voiceState === 'listening' ? 'Tap to send' : undefined}
-          className={[
-            'w-14 h-14 rounded-full flex items-center justify-center shadow-lg',
-            voiceState === 'listening' && 'bg-white text-black animate-pulse active:scale-95 transition-transform cursor-pointer',
-            voiceState === 'processing' && 'bg-zinc-700 text-white/50 cursor-not-allowed',
-            voiceState === 'error' && 'bg-red-500/50 text-white',
-          ].filter(Boolean).join(' ')}
-        >
-          {voiceState === 'processing' ? (
-            <MicOff className="w-6 h-6" />
-          ) : (
-            <Mic className="w-6 h-6" />
-          )}
-        </button>
+        <Sparkles className="h-5 w-5 text-[#E8A94A]" />
       </div>
 
-      <p className="text-white/30 text-xs self-end">
-        {voiceState === 'listening' && 'Tap mic to send · × to cancel'}
-        {voiceState === 'processing' && 'Styling your look…'}
-        {voiceState === 'error' && 'Mic error — tap × to close'}
-      </p>
+      {voiceState === 'idle' && (
+        <>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
+            Best route in. Say the brief naturally, then let the shopping results build from there.
+          </p>
+          <button
+            onClick={startListening}
+            className="mt-5 flex w-full items-center justify-between rounded-[24px] border border-white/35 bg-white/60 px-4 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm transition-all hover:border-white/55 hover:bg-white/72"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(82,126,255,0.24)] bg-white/80">
+                <Mic className="h-5 w-5 text-[var(--text)]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--text)]">Start voice styling</p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+                  Tap once, speak, stop. We’ll send it automatically.
+                </p>
+              </div>
+            </div>
+            <ArrowIndicator />
+          </button>
+
+          <div className="mt-4 space-y-2 text-xs text-[var(--text-muted)]">
+            <p>Try saying:</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                'Trip to India in summer',
+                'Wedding guest look under £150',
+                'Find me one great blazer for work',
+              ].map((prompt) => (
+                <span key={prompt} className="rounded-full border border-[var(--border)] bg-white/55 px-3 py-1.5">
+                  {prompt}
+                </span>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {voiceState !== 'idle' && (
+        <div className="mt-4 space-y-4">
+          <div className="rounded-[24px] border border-white/35 bg-white/68 px-4 py-4 backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-[var(--text)]">
+                {voiceState === 'listening' ? 'Listening...' : voiceState === 'processing' ? 'Processing...' : 'Voice issue'}
+              </p>
+              {voiceState === 'processing' ? (
+                <Loader2 className="h-4 w-4 animate-spin text-[#E8A94A]" />
+              ) : (
+                <Mic className={`h-4 w-4 ${voiceState === 'error' ? 'text-red-500' : 'text-[#E8A94A]'}`} />
+              )}
+            </div>
+            <p className="mt-3 min-h-[40px] text-sm leading-relaxed text-[var(--text-muted)]">
+              {transcript || (voiceState === 'processing' ? 'Styling your look…' : 'Waiting for your brief...')}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={cancel}
+              className="flex h-11 items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-white/60 px-4 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </button>
+            <button
+              onClick={voiceState === 'listening' ? submitNow : undefined}
+              disabled={voiceState === 'processing'}
+              className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all ${
+                voiceState === 'listening'
+                  ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]'
+                  : 'cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-faint)]'
+              }`}
+            >
+              {voiceState === 'processing' ? (
+                <>
+                  <MicOff className="h-4 w-4" />
+                  Working...
+                </>
+              ) : (
+                <>
+                  <Mic className="h-4 w-4" />
+                  Send voice brief
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ArrowIndicator() {
+  return (
+    <div className="rounded-full border border-[rgba(82,126,255,0.22)] bg-white/70 px-3 py-1.5 text-xs text-[var(--text)]">
+      Tap to speak
     </div>
   )
 }

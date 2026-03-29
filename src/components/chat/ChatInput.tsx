@@ -55,10 +55,10 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
             <Image
               src={imagePreview}
               alt="Selected"
-              width={64}
-              height={64}
+              width={52}
+              height={52}
               unoptimized
-              className="h-16 w-16 object-cover rounded-xl border border-[var(--border)]"
+              className="h-[52px] w-[52px] object-cover rounded-xl border border-[var(--border)]"
             />
             <button
               onClick={() => {
@@ -81,7 +81,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
       )}
 
       {/* Input bar */}
-      <div className="flex items-end gap-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-2xl px-3 py-2.5 focus-within:border-[#E8A94A]/60 transition-colors shadow-lg shadow-black/40">
+      <div className="flex items-end gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-input)] px-3 py-2.5 transition-colors focus-within:border-[#E8A94A]/60">
         <button
           onClick={() => setShowImageUpload(!showImageUpload)}
           title="Upload a photo of a look to style"
@@ -100,7 +100,7 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
           onKeyDown={handleKeyDown}
           placeholder={placeholder ?? 'Describe your style or ask for an outfit...'}
           rows={1}
-          className="flex-1 bg-transparent text-[var(--text)] text-sm placeholder-[var(--text-muted)] resize-none outline-none leading-relaxed max-h-32 overflow-y-auto"
+          className="max-h-32 flex-1 resize-none bg-transparent text-sm leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)] overflow-y-auto"
           style={{ scrollbarWidth: 'none' }}
         />
 

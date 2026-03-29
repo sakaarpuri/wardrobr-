@@ -127,10 +127,10 @@ export function ChatMessage({ message, onClarificationSelect }: ChatMessageProps
           <Image
             src={message.imageUrl}
             alt="Uploaded look"
-            width={320}
-            height={240}
+            width={180}
+            height={140}
             unoptimized
-            className="mb-2 max-h-48 w-auto rounded-xl object-cover"
+            className="mb-2 max-h-32 w-auto rounded-xl object-cover"
           />
         )}
         {message.content && (
