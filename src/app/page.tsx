@@ -326,7 +326,7 @@ export default function HomePage() {
 
       <footer className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
         <span className="text-white/30 text-xs">© 2026 Wardrobr.ai</span>
-        <span className="text-white/30 text-xs">UK fashion · Affiliate links</span>
+        <a href="https://sovrn.co/zs04ts3" className="text-white/30 text-xs hover:text-white/50 transition-colors">UK fashion · Affiliate links</a>
       </footer>
     </div>
   )
