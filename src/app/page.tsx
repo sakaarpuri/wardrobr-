@@ -324,9 +324,21 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Affiliate disclosure */}
+      <div className="px-6 py-3 border-t border-white/5 text-center">
+        <p className="text-white/25 text-xs leading-relaxed max-w-xl mx-auto">
+          We earn a commission on purchases made through links on this site, at no extra cost to you.{' '}
+          <Link href="/about" className="text-white/40 hover:text-[#E8A94A] underline underline-offset-2 transition-colors">Learn more</Link>
+        </p>
+      </div>
+
       <footer className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
         <span className="text-white/30 text-xs">© 2026 Wardrobr.ai</span>
-        <a href="https://sovrn.co/zs04ts3" className="text-white/30 text-xs hover:text-white/50 transition-colors">UK fashion · Affiliate links</a>
+        <div className="flex items-center gap-4">
+          <Link href="/about" className="text-white/30 text-xs hover:text-white/50 transition-colors">About</Link>
+          <Link href="/privacy" className="text-white/30 text-xs hover:text-white/50 transition-colors">Privacy</Link>
+          <a href="https://sovrn.co/zs04ts3" className="text-white/30 text-xs hover:text-white/50 transition-colors">Affiliate links</a>
+        </div>
       </footer>
     </div>
   )
