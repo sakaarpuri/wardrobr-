@@ -19,7 +19,7 @@ const EXAMPLE_PROMPTS = [
 ]
 
 const TRUST_POINTS = [
-  'Mission first, not a long form',
+  'Speak the brief in one go',
   'Live product picks from UK stores',
   'Direct retailer links when available',
 ]
@@ -91,22 +91,59 @@ function HomepageInput() {
       <div className="space-y-5">
         <div className="space-y-2 text-left">
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-            Start Here
+            Voice First
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl">
-                Pick the route in, then describe what you need.
+                Start by saying the brief out loud.
               </h2>
               <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
-                Keep it loose if you want. Event, trip, vibe, or one item you need to buy, that is enough to get moving.
+                Say the trip, event, vibe, or one item you need. Wardrobr should feel like speaking to a stylist, not filling in a form.
               </p>
             </div>
             <p className="text-xs text-[var(--text-faint)] sm:text-right">
-              Optional filters stay light until results.
+              Speak first, then tighten the picks.
             </p>
           </div>
         </div>
+
+        <button
+          onClick={handleMic}
+          className={`w-full rounded-[30px] border px-5 py-5 text-left transition-all sm:px-6 sm:py-6 ${
+            isListening
+              ? 'border-[#E8A94A]/60 bg-[#E8A94A]/12 shadow-[0_20px_60px_rgba(232,169,74,0.12)]'
+              : 'border-[#E8A94A]/30 bg-[linear-gradient(135deg,rgba(232,169,74,0.13),rgba(255,255,255,0.02))] hover:border-[#E8A94A]/50 hover:shadow-[0_20px_60px_rgba(26,14,0,0.08)]'
+          }`}
+        >
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border ${isListening ? 'border-[#E8A94A]/55 bg-[#E8A94A]/18' : 'border-[#E8A94A]/35 bg-[var(--bg-card)]'}`}>
+                <Mic className={`h-6 w-6 ${isListening ? 'text-[#E8A94A] animate-pulse' : 'text-[var(--text)]'}`} />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
+                  Primary Start
+                </p>
+                <h3 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text)]">
+                  {isListening ? 'Listening now...' : 'Tap and tell me what you need'}
+                </h3>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
+                  {isListening
+                    ? 'Keep talking. We will send your brief as soon as you stop.'
+                    : 'Try: “Trip to India in summer,” “Need a wedding guest look under £150,” or “Find me one great blazer for work.”'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
+              <span className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5">
+                {isListening ? 'Stop speaking to send' : 'Tap to speak'}
+              </span>
+              <ArrowRight className="h-4 w-4 text-[#E8A94A]" />
+            </div>
+          </div>
+        </button>
 
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {MISSION_OPTIONS.map((option) => (
@@ -132,11 +169,17 @@ function HomepageInput() {
 
         <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-input)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] sm:px-5 sm:py-5">
           <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
+                Prefer typing or photo?
+              </p>
+              <span className="text-[11px] text-[var(--text-faint)]">Fallback path</span>
+            </div>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="What are you shopping for? Try: travel to Las Palmas next week, hero blazer for work, or style these trainers."
+              placeholder="Type the brief here if you’d rather not speak..."
               rows={2}
               className="min-h-[72px] flex-1 bg-transparent text-[15px] text-[var(--text)] placeholder-[var(--text-muted)] resize-none outline-none leading-relaxed"
               style={{ scrollbarWidth: 'none' }}
@@ -152,16 +195,6 @@ function HomepageInput() {
                 >
                   <Camera className="w-4 h-4" />
                   Photo
-                </button>
-                <button
-                  onClick={handleMic}
-                  title="Speak your request"
-                  className={`h-9 rounded-xl px-3 text-sm flex items-center justify-center gap-2 transition-colors ${
-                    isListening ? 'bg-[var(--bg-subtle)] text-[var(--text)] animate-pulse' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-subtle)]'
-                  }`}
-                >
-                  <Mic className="w-4 h-4" />
-                  Speak
                 </button>
               </div>
 
@@ -305,20 +338,20 @@ export default function HomePage() {
             </p>
             <h1 className="leading-none">
               <span className="mb-2 block font-sans text-3xl font-light tracking-tight text-[var(--text-muted)] sm:text-4xl">
-                Your outfit,
+                Say the brief,
               </span>
               <span
                 className="font-display italic font-medium text-[var(--text)]"
                 style={{ fontSize: 'clamp(4.5rem, 13vw, 9.5rem)', lineHeight: 0.95 }}
               >
-                sorted.
+                get sorted.
               </span>
             </h1>
             <p className="mt-4 font-display text-xl italic text-[var(--text-muted)] sm:text-2xl">
-              One clear start, then sharper picks.
+              Voice-led styling that lands on real things to buy.
             </p>
             <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)] sm:text-[15px]">
-              Tell Wardrobr the trip, event, vibe, or item you need. We&apos;ll take you into live results, ask one smart question only when needed, and keep the path to buying clean.
+              Start by speaking the trip, event, vibe, or item you need. Wardrobr turns that brief into live shopping results, asks only the fewest necessary follow-ups, and keeps the path to buying clean.
             </p>
           </div>
 
