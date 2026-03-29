@@ -3,7 +3,6 @@
 import { useEffect, useRef } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { ChatMessage } from './ChatMessage'
-import { ChatInput } from './ChatInput'
 import { track } from '@/lib/posthog'
 import { ClarificationPrompt, Message, Product } from '@/lib/types'
 import { getBudgetLabel, getMissionTitle, getTripPreferenceTitle, inferProfileFromReply, isLikelyClarificationReply, normaliseUserProfile } from '@/lib/shopper'
@@ -333,16 +332,6 @@ export function ChatInterface() {
           ))}
 
           <div ref={bottomRef} />
-        </div>
-      </div>
-
-      <div className="border-t border-[var(--border)] bg-[var(--bg-card)]/92 px-4 py-3 backdrop-blur-sm">
-        <div className="mx-auto w-full max-w-3xl">
-          <ChatInput
-            onSend={handleSend}
-            isLoading={isLoading}
-            placeholder={messages.length > 0 ? 'Type a quick follow-up if speaking is awkward...' : 'Type instead if needed...'}
-          />
         </div>
       </div>
     </div>

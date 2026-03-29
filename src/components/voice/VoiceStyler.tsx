@@ -49,6 +49,8 @@ declare global {
 export function VoiceStyler({ compact = false }: { compact?: boolean }) {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
   const [transcript, setTranscript] = useState('')
+  const [typedPrompt, setTypedPrompt] = useState('')
+  const [showTypedInput, setShowTypedInput] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
@@ -258,6 +260,13 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => () => { stopListening() }, [stopListening])
 
+  const submitTypedPrompt = useCallback(() => {
+    const text = typedPrompt.trim()
+    if (!text) return
+    setTypedPrompt('')
+    runStyleRequest(text)
+  }, [runStyleRequest, typedPrompt])
+
   if (!isSupported) {
     return (
       <div className={`rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)] ${compact ? 'p-4' : 'p-5'}`}>
@@ -322,6 +331,56 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
               </div>
             </div>
           )}
+
+          <div className="mt-4 rounded-[22px] border border-white/35 bg-white/60 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">
+                  Type instead
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-muted)]">
+                  Quick for a small change, like cheaper, darker, or flats instead.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTypedInput((current) => !current)}
+                className="rounded-full border border-[var(--border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:border-[#E8A94A]/35"
+              >
+                {showTypedInput ? 'Hide' : 'Open'}
+              </button>
+            </div>
+
+            {showTypedInput && (
+              <div className="mt-3 flex flex-col gap-3">
+                <textarea
+                  value={typedPrompt}
+                  onChange={(event) => setTypedPrompt(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault()
+                      submitTypedPrompt()
+                    }
+                  }}
+                  rows={2}
+                  placeholder="Type a quick tweak..."
+                  className="min-h-[72px] w-full resize-none rounded-[18px] border border-[var(--border)] bg-white/82 px-3.5 py-3 text-[16px] leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
+                />
+                <button
+                  type="button"
+                  onClick={submitTypedPrompt}
+                  disabled={!typedPrompt.trim()}
+                  className={`inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-all ${
+                    typedPrompt.trim()
+                      ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]'
+                      : 'cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-faint)]'
+                  }`}
+                >
+                  Send typed tweak
+                </button>
+              </div>
+            )}
+          </div>
         </>
       )}
 

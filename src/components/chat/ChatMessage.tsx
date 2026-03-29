@@ -86,7 +86,7 @@ export function ChatMessage({ message, onClarificationSelect }: ChatMessageProps
         transition={{ duration: 0.3 }}
         className="py-1.5"
       >
-        <div className="mb-2 flex items-center gap-2 font-display italic text-[13px] text-[var(--text-faint)] sm:text-xs">
+        <div className="mb-2 flex items-center gap-2 font-display italic text-sm text-[var(--text-faint)] sm:text-xs">
           <PulsingDots />
           Finding pieces…
         </div>
@@ -97,7 +97,7 @@ export function ChatMessage({ message, onClarificationSelect }: ChatMessageProps
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.25, delay: i * 0.05 }}
-              className="w-36 flex-shrink-0 sm:w-28"
+              className="w-32 flex-shrink-0 sm:w-28"
             >
               <ProductCard product={product} />
             </motion.div>
@@ -116,7 +116,7 @@ export function ChatMessage({ message, onClarificationSelect }: ChatMessageProps
     >
       <div
         className={`
-          max-w-[90%] rounded-2xl px-4 py-3.5 text-base leading-relaxed sm:max-w-[85%] sm:py-3 sm:text-sm
+          max-w-[92%] rounded-2xl px-4 py-3.5 text-[16px] leading-relaxed sm:max-w-[85%] sm:py-3 sm:text-sm
           ${isUser
             ? 'bg-[var(--text)] text-[var(--bg)]'
             : 'bg-[var(--bg-card)] text-[var(--text)] border border-[var(--border)]'
@@ -134,7 +134,7 @@ export function ChatMessage({ message, onClarificationSelect }: ChatMessageProps
           />
         )}
         {message.content && (
-          <p className="whitespace-pre-wrap font-display italic text-[15px] sm:text-sm">{message.content}</p>
+          <p className="whitespace-pre-wrap font-display italic text-base sm:text-sm">{message.content}</p>
         )}
         {message.type === 'ai_clarification' && message.clarification && onClarificationSelect && (
           <div className={`${message.content ? 'mt-4 border-t border-[var(--border)] pt-4' : ''}`}>

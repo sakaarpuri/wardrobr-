@@ -87,15 +87,15 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
           <>
             <button
               onClick={prev}
-              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+              className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/38 opacity-100 backdrop-blur-sm transition-all hover:bg-black/48 sm:left-1.5 sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100"
             >
-              <ChevronLeft className="w-3.5 h-3.5 text-white" />
+              <ChevronLeft className="h-5 w-5 text-white sm:h-3.5 sm:w-3.5" />
             </button>
             <button
               onClick={next}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+              className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/38 opacity-100 backdrop-blur-sm transition-all hover:bg-black/48 sm:right-1.5 sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100"
             >
-              <ChevronRight className="w-3.5 h-3.5 text-white" />
+              <ChevronRight className="h-5 w-5 text-white sm:h-3.5 sm:w-3.5" />
             </button>
             {/* Dot indicators */}
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
