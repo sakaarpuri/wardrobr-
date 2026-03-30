@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Cormorant_Garamond } from 'next/font/google'
+import { BuildStamp } from '@/components/BuildStamp'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import './globals.css'
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans antialiased h-full">
         <ThemeProvider>
           {children}
+          <BuildStamp />
         </ThemeProvider>
       </body>
     </html>

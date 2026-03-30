@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { APP_VERSION } from '@/lib/version'
+import { APP_BUILD_LABEL } from '@/lib/version'
 
 export const metadata: Metadata = {
   title: 'About — Wardrobr.ai',
@@ -67,7 +67,7 @@ export default function AboutPage() {
       </main>
 
       <footer className="px-6 py-4 border-t border-[var(--border)] flex items-center justify-between mt-12">
-        <span className="text-[var(--text-faint)] text-xs">© 2026 Wardrobr.ai · {APP_VERSION}</span>
+        <span className="text-[var(--text-faint)] text-xs">© 2026 Wardrobr.ai · {APP_BUILD_LABEL}</span>
         <div className="flex gap-4">
           <Link href="/about" className="text-[var(--text-faint)] text-xs hover:text-[var(--text-muted)] transition-colors">About</Link>
           <Link href="/privacy" className="text-[var(--text-faint)] text-xs hover:text-[var(--text-muted)] transition-colors">Privacy</Link>
