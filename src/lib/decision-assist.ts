@@ -204,6 +204,9 @@ export function buildDecisionReadyProducts(params: {
       bestOverallProductId: null as string | null,
       bestBudgetProductId: null as string | null,
       closestBrandMatchProductId: null as string | null,
+      primaryRecommendationProductId: null as string | null,
+      readyToShop: false,
+      nextBestAction: null as { label: string; prompt: string } | null,
     }
   }
 
@@ -238,6 +241,20 @@ export function buildDecisionReadyProducts(params: {
     requestedBrand && !exactBrandAvailable
       ? `I couldn't get ${requestedBrand} itself here, so I pulled the closest available options for that same ${requestedProfile?.styleTags.slice(0, 2).join(', ') ?? 'overall'} feel.`
       : null
+
+  const primaryRecommendationProductId = closestBrand?.id ?? bestOverall?.id ?? products[0]?.id ?? null
+  const readyToShop = products.length === 1
+  const nextBestAction = products.length > 1
+    ? {
+        label: 'Pick one to build the rest around it',
+        prompt: `Build a full look around ${closestBrand?.name ?? bestOverall?.name ?? products[0]?.name}. Keep that item as the anchor.`,
+      }
+    : products.length === 1
+    ? {
+        label: 'Build the rest of the look',
+        prompt: `Build a full look around ${products[0].name}. Keep that item as the anchor.`,
+      }
+    : null
 
   const rankedProducts = [...productsWithScores].sort((a, b) => {
     if (closestBrand && a.product.id === closestBrand.id) return -1
@@ -280,6 +297,9 @@ export function buildDecisionReadyProducts(params: {
     bestOverallProductId: bestOverall?.id ?? null,
     bestBudgetProductId: bestBudget?.id ?? null,
     closestBrandMatchProductId: closestBrand?.id ?? null,
+    primaryRecommendationProductId,
+    readyToShop,
+    nextBestAction,
   }
 }
 

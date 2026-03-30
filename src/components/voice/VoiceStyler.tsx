@@ -18,8 +18,22 @@ function getVoiceFollowUp(board: OutfitBoard): { text: string; reopenMic: boolea
   const count = board.products.length
 
   if (board.boardType === 'shortlist') {
+    if (board.nextBestAction) {
+      return {
+        text: `Here are ${count} ${categoryLabel}. Want me to help you pick one, or build the rest of the look around the best option?`,
+        reopenMic: true,
+      }
+    }
+
     return {
       text: `Here are ${count} ${categoryLabel}. Want me to narrow by price, material finish, or brand?`,
+      reopenMic: true,
+    }
+  }
+
+  if (board.readyToShop) {
+    return {
+      text: 'This one is ready to shop. Want me to change anything before you go out to the seller?',
       reopenMic: true,
     }
   }
@@ -69,6 +83,7 @@ export function VoiceStyler({
     setOccasionContext,
     userProfile,
     currentBoard,
+    trackSessionSignal,
   } = useChatStore()
   const { speak, stop: stopSpeaking } = useAssistantSpeech()
 
@@ -115,6 +130,10 @@ export function VoiceStyler({
     setIsFollowUpListening(false)
 
     setOccasionContext(text)
+
+    if (currentBoard) {
+      trackSessionSignal('followup_prompt_accepted', { board: currentBoard })
+    }
 
     addMessage({ type: 'user_text', content: text, source })
     const loadingMsg = addMessage({ type: 'system_loading', content: 'Working on it…' })
@@ -217,7 +236,8 @@ export function VoiceStyler({
                 void speakAndMaybeListen(followUp.text, followUp.reopenMic)
               }
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
-              setCurrentBoard(event.outfitBoard)
+              setCurrentBoard(event.outfitBoard, { preserveSelection: true })
+              trackSessionSignal('board_generated', { board: event.outfitBoard })
               void recordMemberEvent('board_generated', {
                 boardId: event.outfitBoard.id,
                 metadata: {
@@ -246,7 +266,7 @@ export function VoiceStyler({
     } finally {
       setLoading(false)
     }
-  }, [addMessage, currentBoard, setCurrentBoard, setLoading, setOccasionContext, speak, speakAndMaybeListen, userProfile])
+  }, [addMessage, currentBoard, setCurrentBoard, setLoading, setOccasionContext, speak, speakAndMaybeListen, trackSessionSignal, userProfile])
 
   const {
     voiceState,

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { OutfitBoard } from '@/components/board/OutfitBoard'
+import { ResumeSavedBoardButton } from '@/components/account/ResumeSavedBoardButton'
 import { createClient } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import type { OutfitBoard as OutfitBoardType } from '@/lib/types'
@@ -42,7 +43,10 @@ export default async function SavedBoardPage({ params }: { params: Promise<{ id:
           </Link>
           <p className="mt-2 text-xl font-semibold tracking-tight text-[var(--text)]">{board.title}</p>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-3">
+          <ResumeSavedBoardButton board={payload} savedBoardId={board.id} />
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-10">

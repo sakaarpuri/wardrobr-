@@ -1,5 +1,7 @@
 import type { UserProfile } from './shopper'
 
+export type SessionStage = 'discovering' | 'comparing' | 'building_look' | 'ready_to_shop'
+
 export type MessageType =
   | 'user_text'
   | 'user_image'
@@ -65,6 +67,12 @@ export interface OutfitBoard {
   bestOverallProductId?: string | null
   bestBudgetProductId?: string | null
   closestBrandMatchProductId?: string | null
+  primaryRecommendationProductId?: string | null
+  readyToShop?: boolean
+  nextBestAction?: {
+    label: string
+    prompt: string
+  } | null
   quickRefineActions?: Array<{
     label: string
     prompt: string
@@ -110,6 +118,11 @@ export interface ChatState {
   messages: Message[]
   isLoading: boolean
   currentBoard: OutfitBoard | null
+  sessionStage: SessionStage
+  certaintyScore: number
+  selectedProductId: string | null
+  anchorProductId: string | null
+  sessionBoardId: string | null
 }
 
 export interface SearchProductsParams {

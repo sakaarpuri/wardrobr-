@@ -4,13 +4,13 @@ import { useState } from 'react'
 import { OutfitBoard as OutfitBoardType, Product } from '@/lib/types'
 import { ProductCard } from './ProductCard'
 import { SwapModal } from './SwapModal'
-import { Bookmark, BookmarkCheck, ImageDown, Mail, Loader2, ShoppingBag } from 'lucide-react'
+import { Bookmark, BookmarkCheck, ImageDown, Mail, Loader2, ShoppingBag, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useChatStore } from '@/store/chatStore'
 import { track } from '@/lib/posthog'
 import { SwapActionKey, formatCurrency } from '@/lib/shopper'
 import { recordMemberEvent, saveBoardForMember } from '@/lib/member-memory-client'
-import { getBoardHandoffPlan } from '@/lib/handoff'
+import { getBoardHandoffPlan, getProductHandoff } from '@/lib/handoff'
 import { buildBoardLeadNote, getBudgetHelperLine } from '@/lib/decision-assist'
 
 interface OutfitBoardProps {
@@ -18,8 +18,22 @@ interface OutfitBoardProps {
 }
 
 export function OutfitBoard({ board }: OutfitBoardProps) {
-  const { occasionContext, swapBoardProduct, userProfile, setPendingMessage, setOccasionContext } = useChatStore()
+  const {
+    occasionContext,
+    swapBoardProduct,
+    userProfile,
+    setPendingMessage,
+    setOccasionContext,
+    selectedProductId,
+    sessionStage,
+    certaintyScore,
+    setSelectedProductId,
+    setAnchorProductId,
+    trackSessionSignal,
+  } = useChatStore()
   const handoffPlan = getBoardHandoffPlan(board)
+  const selectedProduct = board.products.find((product) => product.id === selectedProductId) ?? null
+  const selectedHandoff = selectedProduct ? getProductHandoff(selectedProduct) : null
 
   // Swap state
   const [swappingProductId, setSwappingProductId] = useState<string | null>(null)
@@ -40,6 +54,20 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   const handleOpenAllTabs = () => {
+    if (selectedProduct && selectedHandoff) {
+      window.open(selectedHandoff.url, '_blank', 'noopener,noreferrer')
+      trackSessionSignal('handoff_opened', { board, productId: selectedProduct.id })
+      void recordMemberEvent('handoff_opened', {
+        boardId: board.id,
+        product: selectedProduct,
+        metadata: {
+          handoffKind: selectedHandoff.kind,
+          selectedWinner: true,
+        },
+      })
+      return
+    }
+
     const urls = handoffPlan.urls.filter(Boolean)
 
     const openedWindows: Window[] = []
@@ -86,6 +114,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
 
     if (handoffPlan.kind === 'cart' && handoffPlan.singleUrl) {
       window.open(handoffPlan.singleUrl, '_blank', 'noopener,noreferrer')
+      trackSessionSignal('open_all_tabs', { board })
       void recordMemberEvent('open_all_tabs', {
         boardId: board.id,
         metadata: {
@@ -102,6 +131,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
         `Shop this look at ${handoffPlan.storeName ?? 'the store'}`,
         'Everything in this board comes from one store, so you can compare the picks here and then open only the item you want.'
       )
+      trackSessionSignal('open_all_tabs', { board })
       void recordMemberEvent('open_all_tabs', {
         boardId: board.id,
         metadata: {
@@ -130,6 +160,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
       )
     }
 
+    trackSessionSignal('open_all_tabs', { board })
     void recordMemberEvent('open_all_tabs', {
       boardId: board.id,
       metadata: {
@@ -171,6 +202,9 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
 
   const handleBuildLook = (product: Product) => {
     const anchorPrompt = `Build a full look around this exact item: ${product.name}. Keep this item as the anchor and style the rest around it.`
+    setSelectedProductId(product.id)
+    setAnchorProductId(product.id)
+    trackSessionSignal('build_full_look', { board, productId: product.id })
     setOccasionContext(anchorPrompt)
     setPendingMessage({ text: anchorPrompt, anchorProduct: product })
     track('build_full_look_from_item', {
@@ -184,6 +218,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
     if (!swapAlternatives) return
     swapBoardProduct(board.id, swapAlternatives.product.id, newProduct)
     setSwapAlternatives(null)
+    trackSessionSignal('product_swapped', { board })
     track('product_swapped', { board_id: board.id, occasion: board.occasion })
     void recordMemberEvent('product_swapped', {
       boardId: board.id,
@@ -227,6 +262,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
       }
 
       track('board_shared', { occasion_type: board.occasion })
+      trackSessionSignal('board_share', { board })
       void recordMemberEvent('board_share', {
         boardId: board.id,
         metadata: { occasion: board.occasion ?? board.title },
@@ -256,6 +292,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
       if (!res.ok) throw new Error('Email failed')
       setEmailStatus('sent')
       track('board_emailed', { occasion_type: board.occasion })
+      trackSessionSignal('board_email', { board })
       void recordMemberEvent('board_email', {
         boardId: board.id,
         metadata: { occasion: board.occasion ?? board.title },
@@ -269,6 +306,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
     setSaveStatus('saving')
     try {
       await saveBoardForMember(board)
+      trackSessionSignal('save_board', { board })
       setSaveStatus('saved')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not save board'
@@ -310,8 +348,20 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
   const canBuildLookFromItem = board.boardType === 'shortlist' || board.products.length === 1
   const buildLookLabel = board.products.length === 1 ? 'Build a full look from this' : 'Build a look'
   const handleQuickRefine = (prompt: string) => {
+    trackSessionSignal('followup_prompt_accepted', { board })
     setOccasionContext(prompt)
     setPendingMessage({ text: prompt })
+  }
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProductId(product.id)
+    trackSessionSignal('anchor_selected', { board, productId: product.id })
+    void recordMemberEvent('anchor_selected', {
+      boardId: board.id,
+      product,
+      metadata: {
+        source: 'shortlist_pick',
+      },
+    })
   }
 
   return (
@@ -330,7 +380,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
               <p className="text-[var(--text-muted)] text-xs mt-0.5">{board.occasion}</p>
             )}
             <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-faint)]">
-              {handoffPlan.description}
+              {selectedProduct && selectedHandoff ? `Winner selected. ${selectedHandoff.reason}` : handoffPlan.description}
             </p>
           </div>
 
@@ -343,7 +393,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
               title={handoffPlan.description}
             >
               <ShoppingBag className="h-3.5 w-3.5" />
-              <span>{handoffPlan.label}</span>
+              <span>{selectedProduct && selectedHandoff ? selectedHandoff.label : handoffPlan.label}</span>
             </button>
 
             <button
@@ -391,6 +441,15 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 space-y-2">
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
+                {sessionStage === 'ready_to_shop'
+                  ? 'Ready to shop'
+                  : sessionStage === 'building_look'
+                  ? 'Building the look'
+                  : sessionStage === 'comparing'
+                  ? 'Comparing picks'
+                  : 'Discovering'}
+              </span>
+              <span className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
                 {isShortlist
                   ? `${board.products.length} picks${minPrice === maxPrice ? ` · ${formatCurrency(maxPrice)} each` : ` · ${formatCurrency(minPrice)}-${formatCurrency(maxPrice)} each`}`
                   : `Total ${formatCurrency(totalPrice)}`}
@@ -405,9 +464,35 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
                   Closest available to {board.brandRequest}
                 </span>
               )}
+              {certaintyScore >= 70 && (
+                <span className="rounded-full border border-[#E8A94A]/28 bg-[#E8A94A]/10 px-3 py-1 text-[11px] text-[#E8A94A]">
+                  High purchase confidence
+                </span>
+              )}
             </div>
             {leadNote && (
               <p className="text-xs leading-relaxed text-[var(--text-muted)]">{leadNote}</p>
+            )}
+            {selectedProduct && (
+              <div className="rounded-2xl border border-[#E8A94A]/28 bg-[#E8A94A]/10 px-3 py-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#E8A94A]">Picked for this session</p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--text)]">{selectedProduct.name}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                      Shop it now, or build the rest of the look around it before you leave Wardrobr.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleBuildLook(selectedProduct)}
+                    className="inline-flex items-center gap-2 rounded-full border border-[#E8A94A]/35 bg-white/80 px-4 py-2 text-xs font-medium text-[var(--text)] transition-colors hover:border-[#E8A94A]/55"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-[#E8A94A]" />
+                    Build the rest of the look
+                  </button>
+                </div>
+              </div>
             )}
             {isShortlist && (
               <p className="text-[11px] text-[var(--text-faint)]">
@@ -425,6 +510,14 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
             )}
             {board.quickRefineActions && board.quickRefineActions.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-1">
+                {board.nextBestAction && !selectedProduct && (
+                  <button
+                    onClick={() => handleQuickRefine(board.nextBestAction?.prompt ?? '')}
+                    className="rounded-full border border-[#E8A94A]/35 bg-[#E8A94A]/10 px-3 py-1.5 text-[11px] text-[#E8A94A] transition-colors hover:border-[#E8A94A]/55"
+                  >
+                    {board.nextBestAction.label}
+                  </button>
+                )}
                 {board.quickRefineActions.map((action) => (
                   <button
                     key={action.label}
@@ -505,6 +598,8 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
                 isSwapping={swappingProductId === product.id}
                 onBuildLook={canBuildLookFromItem ? handleBuildLook : undefined}
                 buildLookLabel={buildLookLabel}
+                onSelect={board.boardType === 'shortlist' ? handleSelectProduct : undefined}
+                isSelected={selectedProductId === product.id}
               />
             </motion.div>
           ))}

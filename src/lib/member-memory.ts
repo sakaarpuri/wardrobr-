@@ -10,6 +10,10 @@ export type MemoryEventType =
   | 'board_share'
   | 'board_generated'
   | 'product_swapped'
+  | 'anchor_selected'
+  | 'handoff_opened'
+  | 'board_resumed'
+  | 'followup_prompt_accepted'
 
 export interface MemberPreferences {
   user_id: string

@@ -353,6 +353,9 @@ export async function POST(req: NextRequest) {
                 bestOverallProductId: decisionReady.bestOverallProductId,
                 bestBudgetProductId: decisionReady.bestBudgetProductId,
                 closestBrandMatchProductId: decisionReady.closestBrandMatchProductId,
+                primaryRecommendationProductId: decisionReady.primaryRecommendationProductId,
+                readyToShop: decisionReady.readyToShop,
+                nextBestAction: decisionReady.nextBestAction,
                 quickRefineActions: boardType === 'shortlist'
                   ? buildBoardQuickRefineActions({
                       board: {

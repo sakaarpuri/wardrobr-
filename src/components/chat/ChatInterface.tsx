@@ -38,6 +38,7 @@ export function ChatInterface() {
     occasionContext,
     updateMessage,
     currentBoard,
+    trackSessionSignal,
   } = useChatStore()
 
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -92,6 +93,10 @@ export function ChatInterface() {
 
     if (requestText && !options?.silent && !isClarificationReply) {
       setOccasionContext(requestText)
+    }
+
+    if (currentBoard && requestText && !options?.silent) {
+      trackSessionSignal('followup_prompt_accepted', { board: currentBoard })
     }
 
     if (messages.length === 0 && requestText) {
@@ -203,7 +208,8 @@ export function ChatInterface() {
 
             if (event.outfitBoard) {
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
-              setCurrentBoard(event.outfitBoard)
+              setCurrentBoard(event.outfitBoard, { preserveSelection: true })
+              trackSessionSignal('board_generated', { board: event.outfitBoard })
               track('board_generated', { occasion_type: event.outfitBoard.occasion })
               void recordMemberEvent('board_generated', {
                 boardId: event.outfitBoard.id,

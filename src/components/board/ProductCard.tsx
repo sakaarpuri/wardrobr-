@@ -3,10 +3,11 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import { Product } from '@/lib/types'
-import { ExternalLink, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import { SwapActionKey, getSwapActions } from '@/lib/shopper'
 import { recordMemberEvent } from '@/lib/member-memory-client'
 import { getProductHandoff } from '@/lib/handoff'
+import { useChatStore } from '@/store/chatStore'
 
 const CATEGORY_STYLES: Record<string, { gradient: string; label: string }> = {
   tops:        { gradient: 'from-stone-800 to-stone-700',   label: 'Top' },
@@ -37,11 +38,14 @@ interface ProductCardProps {
   isSwapping?: boolean
   onBuildLook?: (product: Product) => void
   buildLookLabel?: string
+  onSelect?: (product: Product) => void
+  isSelected?: boolean
 }
 
-export function ProductCard({ product, onReplace, isSwapping, onBuildLook, buildLookLabel = 'Build a full look' }: ProductCardProps) {
+export function ProductCard({ product, onReplace, isSwapping, onBuildLook, buildLookLabel = 'Build a full look', onSelect, isSelected = false }: ProductCardProps) {
   const [imgFailed, setImgFailed] = useState(false)
   const [photoIdx, setPhotoIdx] = useState(0)
+  const { trackSessionSignal } = useChatStore()
 
   const allImages = product.images && product.images.length > 1 ? product.images : [product.imageUrl]
   const currentImage = allImages[photoIdx]
@@ -76,7 +80,7 @@ export function ProductCard({ product, onReplace, isSwapping, onBuildLook, build
       : 'View item'
 
   return (
-    <div className="group bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border)] hover:border-[var(--border-hover)] transition-all duration-300">
+    <div className={`group bg-[var(--bg-card)] rounded-2xl overflow-hidden border transition-all duration-300 ${isSelected ? 'border-[#E8A94A]/55 shadow-[0_16px_44px_rgba(232,169,74,0.16)]' : 'border-[var(--border)] hover:border-[var(--border-hover)]'}`}>
       {/* Product Image */}
       <div className="aspect-[3/4] bg-[var(--bg-subtle)] overflow-hidden relative">
         {showPlaceholder ? (
@@ -141,9 +145,9 @@ export function ProductCard({ product, onReplace, isSwapping, onBuildLook, build
           </p>
         </div>
 
-        {product.decisionBadges && product.decisionBadges.length > 0 && (
+        {(isSelected || (product.decisionBadges && product.decisionBadges.length > 0)) && (
           <div className="flex flex-wrap gap-1.5">
-            {product.decisionBadges.slice(0, 2).map((badge) => (
+            {(product.decisionBadges ?? []).slice(0, 2).map((badge) => (
               <span
                 key={badge}
                 className="rounded-full border border-[#E8A94A]/28 bg-[#E8A94A]/10 px-2 py-1 text-[10px] font-medium text-[#E8A94A]"
@@ -151,6 +155,11 @@ export function ProductCard({ product, onReplace, isSwapping, onBuildLook, build
                 {badge}
               </span>
             ))}
+            {isSelected && (
+              <span className="rounded-full border border-[#E8A94A]/35 bg-[#E8A94A]/12 px-2 py-1 text-[10px] font-medium text-[#E8A94A]">
+                Picked for this session
+              </span>
+            )}
           </div>
         )}
 
@@ -176,7 +185,27 @@ export function ProductCard({ product, onReplace, isSwapping, onBuildLook, build
 
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-[var(--text)] sm:text-xs">{formattedPrice}</p>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {onSelect && (
+              <button
+                type="button"
+                onClick={() => onSelect(product)}
+                className={`rounded-full border px-2.5 py-1.5 text-[10px] font-medium transition-colors sm:px-2 sm:py-1 ${
+                  isSelected
+                    ? 'border-[#E8A94A]/45 bg-[#E8A94A]/12 text-[#E8A94A]'
+                    : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:border-[#E8A94A]/35 hover:text-[var(--text)]'
+                }`}
+              >
+                {isSelected ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    Picked
+                  </span>
+                ) : (
+                  'Pick this'
+                )}
+              </button>
+            )}
             {onBuildLook && (
               <button
                 type="button"
@@ -193,6 +222,7 @@ export function ProductCard({ product, onReplace, isSwapping, onBuildLook, build
               className="flex items-center gap-1 rounded-md bg-[#E8A94A] px-2.5 py-1.5 text-[11px] font-semibold text-[#1A0E00] transition-colors hover:bg-[#f0b85a] sm:px-2 sm:py-1 sm:text-[10px]"
               onClick={(e) => {
                 e.stopPropagation()
+                trackSessionSignal('handoff_opened', { productId: product.id })
                 void recordMemberEvent('shop_click', {
                   product,
                   metadata: {
