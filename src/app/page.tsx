@@ -10,6 +10,7 @@ import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AuthStatus } from '@/components/auth/AuthStatus'
 import { EmbeddedStyleWorkspace } from '@/components/workspace/StyleWorkspace'
+import { VoiceStyler } from '@/components/voice/VoiceStyler'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 import { APP_BUILD_LABEL } from '@/lib/version'
 
@@ -63,11 +64,15 @@ function HomeHero({
   onSubmit,
   onStartVoice,
   expanded = false,
+  autoStartVoice = false,
+  onAutoStartHandled,
   children,
 }: {
   onSubmit: (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => void
   onStartVoice: () => void
   expanded?: boolean
+  autoStartVoice?: boolean
+  onAutoStartHandled?: () => void
   children?: ReactNode
 }) {
   const [text, setText] = useState('')
@@ -98,60 +103,99 @@ function HomeHero({
   return (
     <div className={`w-full rounded-[36px] border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(240,235,225,0.82))] shadow-[0_30px_110px_rgba(15,23,42,0.10)] backdrop-blur-xl ${expanded ? 'max-w-7xl p-4 sm:p-5' : 'max-w-4xl p-4 sm:p-6'}`}>
       <div className={`space-y-6 ${expanded ? 'space-y-4' : ''}`}>
-        <div className={`mx-auto text-center ${expanded ? 'max-w-3xl' : 'max-w-2xl'}`}>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-              {expanded ? 'Wardrobr is on it' : 'Voice-first stylist'}
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)] sm:text-3xl">
-              {expanded ? 'Keep going in the same place.' : 'Start with your voice, then refine if you want to.'}
-            </h2>
-          </div>
-          {!expanded && (
+        {!expanded && (
+          <div className="mx-auto max-w-2xl text-center">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
+                Voice-first stylist
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)] sm:text-3xl">
+                Start with your voice, then refine if you want to.
+              </h2>
+            </div>
             <p className="mt-3 text-xs text-[var(--text-faint)]">
               The quickest route in is the mic. Typing and photo matching stay here as backup.
             </p>
-          )}
-        </div>
+          </div>
+        )}
 
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
 
-        <button
-          onClick={onStartVoice}
-          className={`relative w-full overflow-hidden rounded-[32px] border border-[rgba(72,134,255,0.20)] bg-[linear-gradient(135deg,rgba(82,126,255,0.18),rgba(104,220,255,0.14),rgba(255,255,255,0.24))] text-center transition-all hover:border-[rgba(72,134,255,0.34)] hover:shadow-[0_24px_80px_rgba(49,98,255,0.14)] ${expanded ? 'px-4 py-4 sm:px-5 sm:py-5' : 'px-5 py-6 sm:px-8 sm:py-8'}`}
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,215,255,0.24),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(255,211,144,0.20),transparent_36%)]" />
-          <div className={`relative flex items-center justify-center gap-4 ${expanded ? 'flex-col sm:flex-row sm:justify-between' : 'flex-col'}`}>
-            <div className={`relative flex items-center justify-center rounded-full border border-[rgba(82,126,255,0.22)] bg-white/72 backdrop-blur-sm ${expanded ? 'h-16 w-16 sm:h-18 sm:w-18' : 'h-20 w-20 sm:h-24 sm:w-24'}`}>
-              <span className="absolute inset-[-10px] rounded-full border border-[rgba(82,126,255,0.18)]" />
-              <Mic className="h-8 w-8 text-[var(--text)]" />
-            </div>
-            <div className={`${expanded ? 'flex-1 text-center sm:text-left' : ''}`}>
-              <p className={`${expanded ? 'text-xl sm:text-2xl' : 'text-2xl'} font-semibold tracking-tight text-[var(--text)]`}>
-                {expanded ? 'Mic stays in this card while I keep working.' : 'Tap to talk to your stylist'}
-              </p>
-              {!expanded && (
+        {!expanded ? (
+          <button
+            onClick={onStartVoice}
+            className="relative w-full overflow-hidden rounded-[32px] border border-[rgba(72,134,255,0.20)] bg-[linear-gradient(135deg,rgba(82,126,255,0.18),rgba(104,220,255,0.14),rgba(255,255,255,0.24))] px-5 py-6 text-center transition-all hover:border-[rgba(72,134,255,0.34)] hover:shadow-[0_24px_80px_rgba(49,98,255,0.14)] sm:px-8 sm:py-8"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,215,255,0.24),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(255,211,144,0.20),transparent_36%)]" />
+            <div className="relative flex flex-col items-center justify-center gap-4">
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(82,126,255,0.22)] bg-white/72 backdrop-blur-sm sm:h-24 sm:w-24">
+                <span className="absolute inset-[-10px] rounded-full border border-[rgba(82,126,255,0.18)]" />
+                <Mic className="h-8 w-8 text-[var(--text)]" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold tracking-tight text-[var(--text)]">
+                  Tap to talk to your stylist
+                </p>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
                   Say the trip, event, vibe, or one item you need. I&apos;ll start listening and pull the first picks together right here.
                 </p>
-              )}
-            </div>
-            {expanded && (
-              <div className="rounded-full border border-[rgba(82,126,255,0.22)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--text)]">
-                Tap to jump back in
               </div>
-            )}
-          </div>
-        </button>
+            </div>
+          </button>
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
+            <VoiceStyler compact engaged autoStart={autoStartVoice} onAutoStartHandled={onAutoStartHandled} showTypedFallback={false} />
+            <div className="rounded-[28px] border border-[var(--border)] bg-white/72 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm sm:px-5">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
+                    Type / add a photo
+                  </p>
+                </div>
 
-        <div className="space-y-3">
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder="Refine the picks here..."
+                  rows={2}
+                  className="min-h-[72px] flex-1 resize-none bg-transparent text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
+                  style={{ scrollbarWidth: 'none' }}
+                />
+
+                <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload a photo"
+                    className="flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Photo
+                  </button>
+
+                  <button
+                    onClick={handleSend}
+                    disabled={!text.trim()}
+                    className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-all ${
+                      text.trim() ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]' : 'cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-faint)]'
+                    }`}
+                  >
+                    Update picks
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={`space-y-3 ${expanded ? 'hidden sm:hidden' : ''}`}>
           <div className="hidden rounded-[28px] border border-[var(--border)] bg-white/72 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm sm:block sm:px-5">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
                   Or type / add a photo
                 </p>
-                <span className="text-[11px] text-[var(--text-faint)]">Fallback route</span>
               </div>
 
               <textarea
@@ -517,8 +561,14 @@ export default function HomePage() {
           </div>
 
           <div ref={workspaceRef} className={`mt-8 flex w-full justify-center ${workspaceVisible ? 'max-w-7xl' : ''}`}>
-            <HomeHero onSubmit={handleSubmit} onStartVoice={handleStartVoice} expanded={workspaceVisible}>
-              <EmbeddedStyleWorkspace />
+            <HomeHero
+              onSubmit={handleSubmit}
+              onStartVoice={handleStartVoice}
+              expanded={workspaceVisible}
+              autoStartVoice={pendingVoiceStart}
+              onAutoStartHandled={() => setPendingVoiceStart(false)}
+            >
+              {workspaceVisible ? <EmbeddedStyleWorkspace /> : null}
             </HomeHero>
             <Script src="https://sovrn.co/zs04ts3" strategy="afterInteractive" />
           </div>

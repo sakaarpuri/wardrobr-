@@ -16,10 +16,10 @@ export function StyleWorkspace() {
 }
 
 export function EmbeddedStyleWorkspace() {
-  return <StyleWorkspaceInner embedded />
+  return <StyleWorkspaceInner embedded showVoicePanel={false} />
 }
 
-function StyleWorkspaceInner({ embedded }: { embedded: boolean }) {
+function StyleWorkspaceInner({ embedded, showVoicePanel = true }: { embedded: boolean; showVoicePanel?: boolean }) {
   const { clearChat, pendingMessage, pendingVoiceStart, setPendingVoiceStart, userProfile, setUserProfile } = useChatStore()
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
   const [memberLoaded, setMemberLoaded] = useState(false)
@@ -71,11 +71,13 @@ function StyleWorkspaceInner({ embedded }: { embedded: boolean }) {
   return (
     <div className={`grid gap-4 ${embedded ? 'lg:grid-cols-[280px_minmax(0,1fr)]' : 'lg:grid-cols-[320px_minmax(0,1fr)]'}`}>
       <aside className="hidden space-y-4 lg:block">
-        <VoiceStyler
-          engaged={embedded}
-          autoStart={Boolean(shouldAutoStartVoice && isDesktop === true)}
-          onAutoStartHandled={() => setPendingVoiceStart(false)}
-        />
+        {showVoicePanel && (
+          <VoiceStyler
+            engaged={embedded}
+            autoStart={Boolean(shouldAutoStartVoice && isDesktop === true)}
+            onAutoStartHandled={() => setPendingVoiceStart(false)}
+          />
+        )}
         <OptionalDetailsPanel
           userProfile={userProfile}
           setUserProfile={setUserProfile}
@@ -110,19 +112,21 @@ function StyleWorkspaceInner({ embedded }: { embedded: boolean }) {
       </section>
 
       <div className="order-2 space-y-3 lg:hidden">
-        <MobileAccordion
-          label=""
-          title={embedded ? 'Mic' : 'Voice'}
-          subtitle={embedded ? 'This stays live while you keep refining.' : 'The mic stays here while you keep refining.'}
-          defaultOpen={Boolean(shouldAutoStartVoice && isDesktop === false)}
-        >
-          <VoiceStyler
-            compact
-            engaged={embedded}
-            autoStart={Boolean(shouldAutoStartVoice && isDesktop === false)}
-            onAutoStartHandled={() => setPendingVoiceStart(false)}
-          />
-        </MobileAccordion>
+        {showVoicePanel && (
+          <MobileAccordion
+            label=""
+            title="Mic"
+            subtitle=""
+            defaultOpen={Boolean(shouldAutoStartVoice && isDesktop === false)}
+          >
+            <VoiceStyler
+              compact
+              engaged={embedded}
+              autoStart={Boolean(shouldAutoStartVoice && isDesktop === false)}
+              onAutoStartHandled={() => setPendingVoiceStart(false)}
+            />
+          </MobileAccordion>
+        )}
 
         <MobileAccordion
           label=""

@@ -33,17 +33,18 @@ export function VoiceStyler({
   engaged = false,
   autoStart = false,
   onAutoStartHandled,
+  showTypedFallback = true,
 }: {
   compact?: boolean
   engaged?: boolean
   autoStart?: boolean
   onAutoStartHandled?: () => void
+  showTypedFallback?: boolean
 }) {
   const [typedPrompt, setTypedPrompt] = useState('')
   const [showTypedInput, setShowTypedInput] = useState(false)
+  const [isReplying, setIsReplying] = useState(false)
   const lastAutoStartRef = useRef(false)
-  const startListeningRef = useRef<(() => Promise<void>) | null>(null)
-  const speakAndResumeRef = useRef<(message?: string | null) => void>(() => {})
 
   const {
     addMessage,
@@ -51,8 +52,21 @@ export function VoiceStyler({
     setCurrentBoard,
     setOccasionContext,
     userProfile,
+    currentBoard,
   } = useChatStore()
   const { speak, stop: stopSpeaking } = useAssistantSpeech()
+
+  const speakResponse = useCallback(async (message?: string | null) => {
+    const nextMessage = message?.trim()
+    if (!nextMessage) return
+
+    setIsReplying(true)
+    try {
+      await speak(nextMessage)
+    } finally {
+      setIsReplying(false)
+    }
+  }, [speak])
 
   const runStyleRequest = useCallback(async (text: string, source: 'voice' | 'typed' = 'voice') => {
     if (!text.trim()) {
@@ -81,7 +95,7 @@ export function VoiceStyler({
       const response = await fetch('/api/style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history, profile: userProfile }),
+        body: JSON.stringify({ message: text, history, profile: userProfile, currentBoard }),
       })
 
       if (!response.ok || !response.body) throw new Error('Request failed')
@@ -146,19 +160,19 @@ export function VoiceStyler({
 
             if (event.clarification) {
               if (source === 'voice' && event.text) {
-                speakAndResumeRef.current(event.text)
+                void speakResponse(event.text)
               }
               addMessage({ type: 'ai_clarification', content: event.text, clarification: event.clarification })
             } else if (event.text && !event.outfitBoard) {
               if (source === 'voice') {
-                speakAndResumeRef.current(event.text)
+                void speakResponse(event.text)
               }
               addMessage({ type: 'ai_text', content: event.text })
             }
 
             if (event.outfitBoard) {
               if (source === 'voice') {
-                speakAndResumeRef.current(getVoiceFollowUp(event.outfitBoard))
+                void speakResponse(getVoiceFollowUp(event.outfitBoard))
               }
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
               setCurrentBoard(event.outfitBoard)
@@ -185,33 +199,17 @@ export function VoiceStyler({
         content: error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.",
       })
       if (source === 'voice') {
-        void speak(error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.")
+        void speakResponse(error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.")
       }
     } finally {
       setLoading(false)
     }
-  }, [addMessage, setCurrentBoard, setLoading, setOccasionContext, speak, userProfile])
+  }, [addMessage, currentBoard, setCurrentBoard, setLoading, setOccasionContext, speak, speakResponse, userProfile])
 
   const { voiceState, transcript, isSupported, startListening, stopListening, cancelListening } = useVoiceCapture({
     onTranscript: runStyleRequest,
     continuous: false,
   })
-
-  startListeningRef.current = startListening
-
-  const speakAndResume = useCallback(async (message?: string | null) => {
-    const nextMessage = message?.trim()
-    if (!nextMessage) return
-
-    await speak(nextMessage)
-
-    await new Promise((resolve) => window.setTimeout(resolve, 180))
-    await startListeningRef.current?.()
-  }, [speak])
-
-  speakAndResumeRef.current = (message?: string | null) => {
-    void speakAndResume(message)
-  }
 
   useEffect(() => {
     if (!autoStart) {
@@ -251,16 +249,16 @@ export function VoiceStyler({
 
   return (
     <div className={`rounded-[30px] border border-[rgba(82,126,255,0.18)] bg-[linear-gradient(135deg,rgba(82,126,255,0.16),rgba(104,220,255,0.12),rgba(255,255,255,0.22))] shadow-[0_24px_70px_rgba(49,98,255,0.12)] backdrop-blur-xl ${compact ? 'p-4' : 'p-5'}`}>
-        <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className={`font-semibold tracking-tight text-[var(--text)] ${compact ? 'text-lg' : 'text-xl'}`}>
-            {voiceState === 'listening' ? 'Listening' : voiceState === 'processing' ? 'Working on it' : 'Voice'}
+            {voiceState === 'listening' ? 'Listening' : isReplying ? 'Replying' : voiceState === 'processing' ? 'Working' : 'Ready'}
           </h2>
         </div>
         <Sparkles className="h-5 w-5 text-[#E8A94A]" />
       </div>
 
-      {voiceState === 'idle' && (
+      {voiceState === 'idle' && !isReplying && (
         <>
           <button
             onClick={startListening}
@@ -272,80 +270,75 @@ export function VoiceStyler({
               </div>
               <div>
                 <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>
-                  {engaged ? 'Mic ready' : 'Talk to Wardrobr'}
+                  Mic ready
                 </p>
-                {!engaged && (
-                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
-                    Tap once, speak naturally, and I will jump in when you pause.
-                  </p>
-                )}
+                <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+                  {engaged ? 'Ready for the next turn whenever you are.' : 'One turn at a time, then I’ll pause and wait for you.'}
+                </p>
               </div>
             </div>
-            <ArrowIndicator label={engaged ? 'Speak' : 'Tap to talk'} />
+            <ArrowIndicator label="Tap to talk" />
           </button>
 
-          <div className="mt-4 rounded-[22px] border border-white/35 bg-white/60 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">
-                  Type instead
-                </p>
-                {!engaged && (
-                  <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-muted)]">
-                    Quick for a small change, like cheaper, darker, or flats instead.
+          {showTypedFallback && (
+            <div className="mt-4 rounded-[22px] border border-white/35 bg-white/60 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">
+                    Type instead
                   </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTypedInput((current) => !current)}
-                className="rounded-full border border-[var(--border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:border-[#E8A94A]/35"
-              >
-                {showTypedInput ? 'Hide' : 'Open'}
-              </button>
-            </div>
-
-            {showTypedInput && (
-              <div className="mt-3 flex flex-col gap-3">
-                <textarea
-                  value={typedPrompt}
-                  onChange={(event) => setTypedPrompt(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault()
-                      submitTypedPrompt()
-                    }
-                  }}
-                  rows={2}
-                  placeholder="Type a quick tweak..."
-                  className="min-h-[72px] w-full resize-none rounded-[18px] border border-[var(--border)] bg-white/82 px-3.5 py-3 text-[16px] leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
-                />
+                </div>
                 <button
                   type="button"
-                  onClick={submitTypedPrompt}
-                  disabled={!typedPrompt.trim()}
-                  className={`inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-all ${
-                    typedPrompt.trim()
-                      ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]'
-                      : 'cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-faint)]'
-                  }`}
+                  onClick={() => setShowTypedInput((current) => !current)}
+                  className="rounded-full border border-[var(--border)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:border-[#E8A94A]/35"
                 >
-                  Send typed tweak
+                  {showTypedInput ? 'Hide' : 'Open'}
                 </button>
               </div>
-            )}
-          </div>
+
+              {showTypedInput && (
+                <div className="mt-3 flex flex-col gap-3">
+                  <textarea
+                    value={typedPrompt}
+                    onChange={(event) => setTypedPrompt(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault()
+                        submitTypedPrompt()
+                      }
+                    }}
+                    rows={2}
+                    placeholder="Type a quick tweak..."
+                    className="min-h-[72px] w-full resize-none rounded-[18px] border border-[var(--border)] bg-white/82 px-3.5 py-3 text-[16px] leading-relaxed text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={submitTypedPrompt}
+                    disabled={!typedPrompt.trim()}
+                    className={`inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-all ${
+                      typedPrompt.trim()
+                        ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]'
+                        : 'cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-faint)]'
+                    }`}
+                  >
+                    Send typed tweak
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
-      {voiceState !== 'idle' && (
+      {(voiceState !== 'idle' || isReplying) && (
         <div className="mt-4 space-y-4">
             <div className={`rounded-[24px] border ${voiceState === 'listening' ? 'border-[#E8A94A]/45 bg-[linear-gradient(135deg,rgba(232,169,74,0.14),rgba(255,255,255,0.68))]' : 'border-white/35 bg-white/68'} backdrop-blur-sm ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">
-                {voiceState === 'listening' ? 'Listening...' : voiceState === 'processing' ? 'Working on it...' : 'Voice issue'}
+                {voiceState === 'listening' ? 'Listening' : isReplying ? 'Replying' : voiceState === 'processing' ? 'Working' : 'Voice issue'}
               </p>
-              {voiceState === 'processing' ? (
+              {voiceState === 'processing' || isReplying ? (
                 <Loader2 className="h-4 w-4 animate-spin text-[#E8A94A]" />
               ) : (
                 <Mic className={`h-4 w-4 ${voiceState === 'error' ? 'text-red-500' : 'text-[#E8A94A]'}`} />
@@ -354,11 +347,11 @@ export function VoiceStyler({
             <p className="mt-3 min-h-[40px] text-sm leading-relaxed text-[var(--text-muted)]">
               {voiceState === 'error'
                 ? (transcript || 'We could not catch that clearly. Try one short voice tweak.')
+                : isReplying
+                ? 'Replying with the next useful step.'
                 : voiceState === 'processing'
-                ? 'I got it. I am working that into the picks now.'
-                : engaged
-                ? 'I am listening.'
-                : 'I am listening. Pause when you are done.'}
+                ? 'Working on the next set of picks.'
+                : 'Pause when you are done and I’ll stop automatically.'}
             </p>
           </div>
 
@@ -372,7 +365,7 @@ export function VoiceStyler({
             </button>
             <button
               onClick={voiceState === 'listening' ? stopListening : undefined}
-              disabled={voiceState === 'processing'}
+              disabled={voiceState === 'processing' || isReplying}
               className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all ${compact ? 'h-10' : 'h-11'} ${
                 voiceState === 'listening'
                   ? 'bg-[#E8A94A] text-[#1A0E00] hover:bg-[#f0b85a]'
@@ -384,10 +377,15 @@ export function VoiceStyler({
                   <MicOff className="h-4 w-4" />
                   Working...
                 </>
+              ) : isReplying ? (
+                <>
+                  <MicOff className="h-4 w-4" />
+                  Replying...
+                </>
               ) : (
                 <>
                   <Mic className="h-4 w-4" />
-                  Stop listening
+                  Stop
                 </>
               )}
             </button>

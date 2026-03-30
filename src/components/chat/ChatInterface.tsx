@@ -37,6 +37,7 @@ export function ChatInterface() {
     setPendingMessage,
     occasionContext,
     updateMessage,
+    currentBoard,
   } = useChatStore()
 
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -48,6 +49,14 @@ export function ChatInterface() {
   const latestVoiceMessage = latestUserTextMessage?.source === 'voice' ? latestUserTextMessage : null
   const activeRequestText = occasionContext ?? pendingMessage?.text ?? getLatestUserRequest(messages)
   const workingSummary = buildWorkingSummary(activeRequestText, userProfile)
+  const hiddenLatestTypedRequestId =
+    latestUserTextMessage &&
+    latestUserTextMessage.source !== 'voice' &&
+    activeRequestText &&
+    latestUserTextMessage.content?.trim().toLowerCase() === activeRequestText.trim().toLowerCase()
+      ? latestUserTextMessage.id
+      : null
+  const visibleMessages = messages.filter((message) => message.id !== hiddenLatestTypedRequestId)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -63,6 +72,7 @@ export function ChatInterface() {
       overrideProfile?: Partial<typeof userProfile>
       resolvedClarificationId?: string
       overrideText?: string
+      anchorProduct?: Product
     }
   ) => {
     let productStreamId: string | null = null
@@ -114,6 +124,8 @@ export function ChatInterface() {
           imageMimeType,
           history,
           profile: effectiveProfile,
+          currentBoard,
+          anchorProduct: options?.anchorProduct,
         }),
       })
 
@@ -223,9 +235,9 @@ export function ChatInterface() {
   useEffect(() => {
     if (pendingMessage && pendingMessage !== lastPendingMessageRef.current) {
       lastPendingMessageRef.current = pendingMessage
-      const { text, imageBase64, imageMimeType, imagePreview } = pendingMessage
+      const { text, imageBase64, imageMimeType, imagePreview, anchorProduct } = pendingMessage
       setPendingMessage(null)
-      void handleSend(text, imageBase64, imageMimeType, imagePreview)
+      void handleSend(text, imageBase64, imageMimeType, imagePreview, { anchorProduct })
     }
     // handleSend is intentionally excluded here so a new function instance
     // does not re-fire the same pending request on every render.
@@ -363,7 +375,7 @@ export function ChatInterface() {
             </div>
           )}
 
-          {messages.map((message) => (
+          {visibleMessages.map((message) => (
             <ChatMessage
               key={message.id}
               message={message}

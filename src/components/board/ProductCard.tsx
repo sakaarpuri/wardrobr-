@@ -35,9 +35,11 @@ interface ProductCardProps {
   product: Product
   onReplace?: (product: Product, action?: SwapActionKey) => void
   isSwapping?: boolean
+  onBuildLook?: (product: Product) => void
+  buildLookLabel?: string
 }
 
-export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps) {
+export function ProductCard({ product, onReplace, isSwapping, onBuildLook, buildLookLabel = 'Build a full look' }: ProductCardProps) {
   const [imgFailed, setImgFailed] = useState(false)
   const [photoIdx, setPhotoIdx] = useState(0)
 
@@ -135,25 +137,36 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
 
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-[var(--text)] sm:text-xs">{formattedPrice}</p>
-          <a
-            href={handoff.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 rounded-md bg-[#E8A94A] px-2.5 py-1.5 text-[11px] font-semibold text-[#1A0E00] transition-colors hover:bg-[#f0b85a] sm:px-2 sm:py-1 sm:text-[10px]"
-            onClick={(e) => {
-              e.stopPropagation()
-              void recordMemberEvent('shop_click', {
-                product,
-                metadata: {
-                  source: 'product_card',
-                  handoffKind: handoff.kind,
-                },
-              })
-            }}
-          >
-            {handoff.kind === 'cart' ? 'Cart' : 'Shop'}
-            <ExternalLink className="w-2.5 h-2.5" />
-          </a>
+          <div className="flex items-center gap-1.5">
+            {onBuildLook && (
+              <button
+                type="button"
+                onClick={() => onBuildLook(product)}
+                className="rounded-full border border-[#E8A94A]/35 bg-[#E8A94A]/10 px-2.5 py-1.5 text-[10px] font-medium text-[#E8A94A] transition-colors hover:border-[#E8A94A]/55 hover:bg-[#E8A94A]/14 sm:px-2 sm:py-1"
+              >
+                {buildLookLabel}
+              </button>
+            )}
+            <a
+              href={handoff.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 rounded-md bg-[#E8A94A] px-2.5 py-1.5 text-[11px] font-semibold text-[#1A0E00] transition-colors hover:bg-[#f0b85a] sm:px-2 sm:py-1 sm:text-[10px]"
+              onClick={(e) => {
+                e.stopPropagation()
+                void recordMemberEvent('shop_click', {
+                  product,
+                  metadata: {
+                    source: 'product_card',
+                    handoffKind: handoff.kind,
+                  },
+                })
+              }}
+            >
+              {handoff.kind === 'cart' ? 'Cart' : 'Shop'}
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          </div>
         </div>
 
         {onReplace && (

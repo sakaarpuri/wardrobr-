@@ -17,7 +17,7 @@ interface OutfitBoardProps {
 }
 
 export function OutfitBoard({ board }: OutfitBoardProps) {
-  const { occasionContext, swapBoardProduct, userProfile } = useChatStore()
+  const { occasionContext, swapBoardProduct, userProfile, setPendingMessage, setOccasionContext } = useChatStore()
   const handoffPlan = getBoardHandoffPlan(board)
 
   // Swap state
@@ -26,6 +26,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
     product: Product
     alternatives: Product[]
     actionLabel?: string
+    notice?: string | null
   } | null>(null)
 
   // Share state
@@ -127,19 +128,32 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
           currentPrice: product.price,
           currentStore: product.storeName,
           category: product.category,
+          currentProductDescription: product.description,
+          refinementText: action,
           occasionContext,
           action,
           profile: userProfile,
         }),
       })
       if (!res.ok) throw new Error('Swap failed')
-      const { alternatives, actionLabel } = await res.json()
-      setSwapAlternatives({ product, alternatives, actionLabel })
+      const { alternatives, actionLabel, notice } = await res.json()
+      setSwapAlternatives({ product, alternatives, actionLabel, notice })
     } catch (error) {
       console.error('Replace error:', error)
     } finally {
       setSwappingProductId(null)
     }
+  }
+
+  const handleBuildLook = (product: Product) => {
+    const anchorPrompt = `Build a full look around this exact item: ${product.name}. Keep this item as the anchor and style the rest around it.`
+    setOccasionContext(anchorPrompt)
+    setPendingMessage({ text: anchorPrompt, anchorProduct: product })
+    track('build_full_look_from_item', {
+      board_id: board.id,
+      product_id: product.id,
+      category: product.category,
+    })
   }
 
   const handleSwapSelect = (newProduct: Product) => {
@@ -267,6 +281,8 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
       : board.products.length === 3
       ? 'grid-cols-2 sm:grid-cols-3'
       : 'grid-cols-2 sm:grid-cols-4'
+  const canBuildLookFromItem = board.boardType === 'shortlist' || board.products.length === 1
+  const buildLookLabel = board.products.length === 1 ? 'Build a full look from this' : 'Build a look'
 
   return (
     <>
@@ -417,6 +433,12 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
           </motion.div>
         )}
 
+        {canBuildLookFromItem && (
+          <p className="text-[11px] text-[var(--text-faint)]">
+            {board.products.length > 1 ? 'Select one to see a full look to go with it.' : 'Build a full look around this pick before you head out to the retailer.'}
+          </p>
+        )}
+
         {/* Product Grid */}
         <div className={`grid ${gridCols} gap-2`}>
           {board.products.map((product, i) => (
@@ -430,6 +452,8 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
                 product={product}
                 onReplace={handleReplace}
                 isSwapping={swappingProductId === product.id}
+                onBuildLook={canBuildLookFromItem ? handleBuildLook : undefined}
+                buildLookLabel={buildLookLabel}
               />
             </motion.div>
           ))}
@@ -446,6 +470,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
         <SwapModal
           alternatives={swapAlternatives.alternatives}
           actionLabel={swapAlternatives.actionLabel}
+          notice={swapAlternatives.notice}
           onSelect={handleSwapSelect}
           onClose={() => setSwapAlternatives(null)}
         />

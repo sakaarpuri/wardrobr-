@@ -9,11 +9,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 interface SwapModalProps {
   alternatives: Product[]
   actionLabel?: string
+  notice?: string | null
   onSelect: (product: Product) => void
   onClose: () => void
 }
 
-export function SwapModal({ alternatives, actionLabel, onSelect, onClose }: SwapModalProps) {
+export function SwapModal({ alternatives, actionLabel, notice, onSelect, onClose }: SwapModalProps) {
   const [failedImages, setFailedImages] = useState<Record<string, true>>({})
 
   return (
@@ -42,6 +43,12 @@ export function SwapModal({ alternatives, actionLabel, onSelect, onClose }: Swap
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {notice && (
+            <p className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-100">
+              {notice}
+            </p>
+          )}
 
           <div className="grid grid-cols-3 gap-3">
             {alternatives.map((product) => (

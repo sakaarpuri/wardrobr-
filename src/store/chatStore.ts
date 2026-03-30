@@ -7,6 +7,7 @@ export interface PendingMessage {
   imageBase64?: string
   imageMimeType?: string
   imagePreview?: string
+  anchorProduct?: Product
 }
 
 interface ChatStore {

@@ -5,6 +5,7 @@ import { SearchProviderUnavailableError, searchProducts, rewriteAffiliateUrl } f
 import { routeRequest } from '@/lib/gemini-router'
 import { ClarificationGroup, ClarificationPrompt, Product, OutfitBoard } from '@/lib/types'
 import { UserProfile, buildProfileContext, extractSpecificItemCategories, getBudgetCap, getBudgetLabel, getBudgetStatus, getSearchPriceCap, inferProfileFromReply, isLikelyShoppingRelevant, isSingleSpecificItemRequest, isUnsupportedShopperSegment, normaliseUserProfile } from '@/lib/shopper'
+import { ProtectedProductAttributes, buildProtectedSearchQuery, constrainProductsToProtectedAttributes, extractProtectedAttributesFromProduct, extractProtectedAttributesFromText, mergeProtectedAttributes } from '@/lib/product-attributes'
 import { buildMemberMemoryContext, getMemberMemorySnapshot } from '@/lib/member-memory'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
@@ -96,14 +97,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Request too large' }, { status: 413 })
   }
 
-  let body: { message?: string; imageBase64?: string; imageMimeType?: string; history?: unknown[]; profile?: Partial<UserProfile> }
+  let body: {
+    message?: string
+    imageBase64?: string
+    imageMimeType?: string
+    history?: unknown[]
+    profile?: Partial<UserProfile>
+    currentBoard?: OutfitBoard | null
+    anchorProduct?: Product | null
+  }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { message, imageBase64, imageMimeType, history = [], profile: rawProfile } = body
+  const { message, imageBase64, imageMimeType, history = [], profile: rawProfile, currentBoard, anchorProduct } = body
 
   if (!message && !imageBase64) {
     return NextResponse.json({ error: 'Message or image required' }, { status: 400 })
@@ -132,6 +141,9 @@ export async function POST(req: NextRequest) {
     ...normaliseUserProfile(rawProfile),
     ...inferProfileFromReply(message ?? '', normaliseUserProfile(rawProfile), lastAssistantText),
   }
+  const currentAnchorProduct = anchorProduct ?? (currentBoard?.products.length === 1 ? currentBoard.products[0] : null)
+  const explicitProtectedAttributes = extractProtectedAttributesFromText(message ?? '')
+  const anchorProtectedAttributes = extractProtectedAttributesFromProduct(currentAnchorProduct)
   let memberMemoryContext = ''
 
   if (isSupabaseConfigured()) {
@@ -189,13 +201,17 @@ export async function POST(req: NextRequest) {
         // Only run Flash-Lite classification when there's an image — text-only
         // doesn't benefit from the pre-call and it adds ~500 ms of latency.
         const productCache = new Map<string, Product>()
+        const searchConstraintNotices = new Set<string>()
         const model = getGeminiModel()
         const chat = model.startChat({ history: safeHistory })
 
         const messageParts: Part[] = []
         if (imagePart) messageParts.push(imagePart)
         const shopperContext = buildProfileContext(profile)
-        const textWithContext = [shopperContext, memberMemoryContext, route.imageContextHint, message].filter(Boolean).join('\n')
+        const anchorContext = currentAnchorProduct
+          ? `[Anchor item: ${currentAnchorProduct.name}${currentAnchorProduct.description ? ` — ${currentAnchorProduct.description}` : ''}. Keep this item as the anchor if the shopper is asking to build around it. Preserve its category and material unless the shopper explicitly relaxes that.]`
+          : ''
+        const textWithContext = [shopperContext, memberMemoryContext, anchorContext, route.imageContextHint, message].filter(Boolean).join('\n')
         if (textWithContext) messageParts.push({ text: textWithContext })
 
         emit({ type: 'status', text: 'Thinking about your look…' })
@@ -228,20 +244,31 @@ export async function POST(req: NextRequest) {
                 gender?: 'men' | 'women' | 'unisex'
                 limit?: number
               }
-              const searchResult = await searchProducts(applyShopperConstraints(params, profile))
+              const effectiveProtectedAttributes = getProtectedAttributesForSearch({
+                params,
+                explicitAttributes: explicitProtectedAttributes,
+                anchorAttributes: anchorProtectedAttributes,
+                anchorProduct: currentAnchorProduct,
+              })
+              const searchResult = await searchProducts(applyShopperConstraints(params, profile, effectiveProtectedAttributes))
+              const constrainedSearch = constrainProductsToProtectedAttributes(searchResult.products, effectiveProtectedAttributes)
 
-              for (const product of searchResult.products) {
+              if (constrainedSearch.disclosure) {
+                searchConstraintNotices.add(constrainedSearch.disclosure)
+              }
+
+              for (const product of constrainedSearch.products) {
                 collectedProducts.set(product.id, product)
                 productCache.set(product.id, product)
               }
 
               // Emit products immediately so the UI can show them live
-              if (searchResult.products.length > 0) {
-                emit({ type: 'products', products: searchResult.products })
+              if (constrainedSearch.products.length > 0) {
+                emit({ type: 'products', products: constrainedSearch.products })
               }
 
               fnResult = {
-                products: searchResult.products.map(p => ({
+                products: constrainedSearch.products.map(p => ({
                   id: p.id,
                   name: p.name,
                   brand: p.brand,
@@ -251,7 +278,7 @@ export async function POST(req: NextRequest) {
                   category: p.category,
                   description: p.description,
                 })),
-                total: searchResult.total,
+                total: constrainedSearch.products.length,
               }
             } else if (call.name === 'get_product_details') {
               const { productId } = call.args as { productId: string }
@@ -297,7 +324,13 @@ export async function POST(req: NextRequest) {
                   ? Number((budgetCap - pricingReference).toFixed(2))
                   : null,
                 budgetStatus: getBudgetStatus(pricingReference, profile.budget, profile.budgetMax),
-                warnings: buildBoardWarnings(profile, pricingReference, boardProducts.map((product) => product.category), boardType),
+                warnings: buildBoardWarnings(
+                  profile,
+                  pricingReference,
+                  boardProducts.map((product) => product.category),
+                  boardType,
+                  Array.from(searchConstraintNotices)
+                ),
               }
 
               fnResult = { success: true, boardId: outfitBoard.id, productCount: boardProducts.length }
@@ -359,7 +392,8 @@ function applyShopperConstraints(
     gender?: 'men' | 'women' | 'unisex'
     limit?: number
   },
-  profile: UserProfile
+  profile: UserProfile,
+  protectedAttributes: ProtectedProductAttributes
 ) {
   const nextParams = { ...params }
 
@@ -372,7 +406,63 @@ function applyShopperConstraints(
     nextParams.maxPrice = nextParams.maxPrice ? Math.min(nextParams.maxPrice, priceCap) : priceCap
   }
 
+  nextParams.query = buildProtectedSearchQuery(nextParams.query, protectedAttributes)
+
   return nextParams
+}
+
+function getProtectedAttributesForSearch(params: {
+  params: { category?: string; query: string }
+  explicitAttributes: ProtectedProductAttributes
+  anchorAttributes: ProtectedProductAttributes
+  anchorProduct?: Product | null
+}) {
+  const { params: searchParams, explicitAttributes, anchorAttributes, anchorProduct } = params
+
+  if (explicitAttributes.material || explicitAttributes.finish) {
+    const explicitCategory = getCategoryFamily(explicitAttributes.category)
+    const requestedCategory = getCategoryFamily(searchParams.category)
+
+    if (!explicitCategory || !requestedCategory || explicitCategory === requestedCategory) {
+      return mergeProtectedAttributes(explicitAttributes, anchorAttributes)
+    }
+
+    return getEmptyProtectedAttributes()
+  }
+
+  if (!anchorProduct) {
+    return explicitAttributes
+  }
+
+  const requestedCategory = getCategoryFamily(searchParams.category)
+  const anchorCategory = getCategoryFamily(anchorProduct.category)
+
+  if (!requestedCategory || requestedCategory === anchorCategory) {
+    return mergeProtectedAttributes(explicitAttributes, anchorAttributes)
+  }
+
+  return explicitAttributes
+}
+
+function getEmptyProtectedAttributes(): ProtectedProductAttributes {
+  return {
+    category: null,
+    material: null,
+    finish: null,
+  }
+}
+
+function getCategoryFamily(category?: string | null) {
+  const value = (category ?? '').trim().toLowerCase()
+
+  if (!value) return null
+  if (['jacket', 'jackets', 'coat', 'coats', 'blazer', 'blazers', 'outerwear'].includes(value)) return 'outerwear'
+  if (['shoe', 'shoes', 'trainers', 'sneakers', 'boots', 'heels', 'sandals', 'loafers', 'footwear'].includes(value)) return 'shoes'
+  if (['bag', 'bags', 'handbag', 'clutch', 'tote'].includes(value)) return 'bags'
+  if (['dress', 'dresses'].includes(value)) return 'dresses'
+  if (['top', 'tops', 'shirt', 'shirts', 'blouse', 'blouses'].includes(value)) return 'tops'
+  if (['trousers', 'pants', 'jeans', 'skirts', 'shorts', 'bottoms'].includes(value)) return 'bottoms'
+  return value
 }
 
 function getClarificationPrompt(
@@ -597,9 +687,10 @@ function buildBoardWarnings(
   profile: UserProfile,
   totalPrice: number,
   categories: string[],
-  boardType: OutfitBoard['boardType']
+  boardType: OutfitBoard['boardType'],
+  constraintNotices: string[] = []
 ) {
-  const warnings: string[] = ['Stock can change quickly on retailer pages.']
+  const warnings: string[] = ['Stock can change quickly on retailer pages.', ...constraintNotices]
 
   if (profile.size) {
     warnings.push('Clothing size is still advisory, so double-check retailer availability before buying.')
