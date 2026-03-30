@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { Camera, Mic, Send, Sparkles, Wand2 } from 'lucide-react'
+import { motion, useInView, useReducedMotion } from 'framer-motion'
 import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AuthStatus } from '@/components/auth/AuthStatus'
@@ -307,77 +308,150 @@ function HomeHero({
 
 function ProofBoard() {
   const board = EXAMPLE_BOARDS[1] ?? EXAMPLE_BOARDS[0]
+  const proofRef = useRef<HTMLElement | null>(null)
+  const isInView = useInView(proofRef, { once: true, amount: 0.35 })
+  const reduceMotion = useReducedMotion()
+  const shouldAnimate = isInView && !reduceMotion
+  const stores = 'ASOS, Zara, H&M, more'
 
   return (
-    <section className="px-6 pb-6">
-      <div className="mx-auto max-w-4xl rounded-[32px] border border-[var(--border)] bg-[var(--bg-card)] p-4 shadow-[0_20px_70px_rgba(15,23,42,0.07)] sm:p-5">
-        <div className="flex flex-col gap-2 text-left sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-md">
-            <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-faint)]">What you&apos;ll get</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--text)] sm:text-xl">Your look, ready to shop.</h2>
-          </div>
-          <p className="max-w-sm text-[13px] leading-relaxed text-[var(--text-muted)] sm:text-sm">
-            The result is a real board with product cards, live prices, store links, and a total, not a vague moodboard.
-          </p>
-        </div>
+    <section ref={proofRef} className="px-6 pb-6">
+      <motion.div
+        initial={reduceMotion ? false : { opacity: 0.88, y: 12 }}
+        animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
+        transition={{ duration: 0.55, ease: 'easeOut' }}
+        className="mx-auto max-w-5xl overflow-hidden rounded-[34px] border border-[var(--border)] bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(244,241,234,0.90))] p-4 shadow-[0_24px_90px_rgba(15,23,42,0.08)] sm:p-5"
+      >
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
+          <div className="space-y-4 text-left">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.30em] text-[var(--text-faint)]">
+                  What arrives
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)] sm:text-[2rem]">
+                  A shortlist you can actually act on.
+                </h2>
+                <p className="mt-3 max-w-lg text-[14px] leading-relaxed text-[var(--text-muted)] sm:text-[15px]">
+                  Live product cards, quick compare points, and the strongest route to the seller when you&apos;re ready. No vague moodboard. No extra hunting.
+                </p>
+              </div>
 
-        <div className="mt-4 grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
-          <div className="rounded-[22px] border border-[var(--border)] bg-[var(--bg-subtle)] p-2.5 sm:p-3">
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-              {board.board.products.slice(0, 4).map((product) => (
-                <div key={product.id} className="overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--bg-card)]">
-                  <div className="relative aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)]">
-                    <Image
-                      src={product.imageUrl}
-                      alt={product.name}
-                      fill
-                      sizes="(max-width: 768px) 45vw, 20vw"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="space-y-1 p-2">
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-faint)]">{product.brand}</p>
-                    <p className="line-clamp-2 text-[11px] font-medium leading-snug text-[var(--text)]">{product.name}</p>
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] font-semibold text-[var(--text)]">{formatPrice(product.price)}</span>
-                      <span className="text-[10px] text-[var(--text-faint)]">Shop</span>
-                    </div>
-                  </div>
-                </div>
+              <motion.div
+                initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
+                animate={shouldAnimate ? { opacity: 1, scale: 1 } : undefined}
+                transition={{ delay: 0.12, duration: 0.45, ease: 'easeOut' }}
+                className="inline-flex items-center gap-2 rounded-full border border-[rgba(82,126,255,0.16)] bg-white/72 px-3 py-2 text-[11px] font-medium text-[var(--text-muted)]"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-[#E8A94A]" />
+                Decision-ready, not browse-forever
+              </motion.div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3">
+              {[
+                { label: 'See', value: 'Real product cards', note: 'with prices and store links' },
+                { label: 'Compare', value: 'Best pick cues', note: 'so you decide faster' },
+                { label: 'Leave late', value: 'Cart or product page', note: 'only when you are ready' },
+              ].map((item, index) => (
+                <motion.div
+                  key={item.label}
+                  initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                  animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
+                  transition={{ delay: 0.08 * index, duration: 0.42, ease: 'easeOut' }}
+                  className="rounded-[20px] border border-[var(--border)] bg-white/78 px-4 py-3"
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">{item.label}</p>
+                  <p className="mt-2 text-sm font-semibold text-[var(--text)]">{item.value}</p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">{item.note}</p>
+                </motion.div>
               ))}
             </div>
-          </div>
 
-          <div className="rounded-[22px] border border-[var(--border)] bg-[linear-gradient(145deg,rgba(82,126,255,0.10),rgba(255,255,255,0.85))] p-3.5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">Example result</p>
-            <h3 className="mt-2 text-lg font-semibold tracking-tight text-[var(--text)]">{board.title}</h3>
-            <p className="mt-2.5 text-[13px] leading-relaxed text-[var(--text-muted)] sm:text-sm">{board.board.styleNote}</p>
-
-            <div className="mt-3.5 space-y-2 text-sm">
-              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-3 py-2">
-                <span className="text-[var(--text-muted)]">Stores</span>
-                <span className="font-medium text-[var(--text)]">ASOS, Zara, H&amp;M, more</span>
-              </div>
-              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-3 py-2">
-                <span className="text-[var(--text-muted)]">Pieces</span>
-                <span className="font-medium text-[var(--text)]">{board.board.products.length} shoppable picks</span>
-              </div>
-              <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/70 px-3 py-2">
-                <span className="text-[var(--text-muted)]">Total</span>
-                <span className="font-medium text-[var(--text)]">{formatPrice(board.board.totalPrice ?? 0)}</span>
+            <div className="rounded-[24px] border border-[rgba(232,169,74,0.22)] bg-[linear-gradient(145deg,rgba(255,252,245,0.96),rgba(255,255,255,0.82))] p-3">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {board.board.products.slice(0, 4).map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    initial={reduceMotion ? false : { opacity: 0, y: 16, scale: 0.98 }}
+                    animate={shouldAnimate ? { opacity: 1, y: 0, scale: 1 } : undefined}
+                    transition={{ delay: 0.12 + index * 0.08, duration: 0.42, ease: 'easeOut' }}
+                    className="overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--bg-card)] shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
+                  >
+                    <div className="relative aspect-[4/5] overflow-hidden bg-[var(--bg-subtle)]">
+                      <Image
+                        src={product.imageUrl}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 768px) 45vw, 20vw"
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="space-y-1.5 p-2.5">
+                      <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-faint)]">{product.brand}</p>
+                      <p className="line-clamp-2 text-[11px] font-medium leading-snug text-[var(--text)]">{product.name}</p>
+                      <div className="flex items-center justify-between pt-0.5">
+                        <span className="text-[11px] font-semibold text-[var(--text)]">{formatPrice(product.price)}</span>
+                        <span className="rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-0.5 text-[10px] text-[var(--text-faint)]">Shop</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
-
-            <Link
-              href={`/board/${board.id}`}
-              className="mt-3.5 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2 text-sm text-[var(--text)] transition-colors hover:border-[#E8A94A]/40"
-            >
-              See exact example board
-              <Sparkles className="h-4 w-4 text-[#E8A94A]" />
-            </Link>
           </div>
+
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, x: 18 }}
+            animate={shouldAnimate ? { opacity: 1, x: 0 } : undefined}
+            transition={{ delay: 0.18, duration: 0.5, ease: 'easeOut' }}
+            className="relative overflow-hidden rounded-[28px] border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(145deg,rgba(82,126,255,0.10),rgba(255,255,255,0.92))] p-4"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,215,255,0.18),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(232,169,74,0.14),transparent_30%)]" />
+            <div className="relative">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">Example board</p>
+              <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)]">{board.title}</h3>
+              <p className="mt-3 text-[14px] leading-relaxed text-[var(--text-muted)] sm:text-[15px]">
+                The dress carries the look, then the sandals, bag, and earrings keep it polished without pushing it too formal.
+              </p>
+
+              <div className="mt-4 space-y-2.5">
+                {[
+                  { label: 'Stores', value: stores },
+                  { label: 'Pieces', value: `${board.board.products.length} shoppable picks` },
+                  { label: 'Total', value: formatPrice(board.board.totalPrice ?? 0) },
+                ].map((item, index) => (
+                  <motion.div
+                    key={item.label}
+                    initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                    animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
+                    transition={{ delay: 0.24 + index * 0.06, duration: 0.36, ease: 'easeOut' }}
+                    className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/74 px-3.5 py-2.5"
+                  >
+                    <span className="text-[var(--text-muted)]">{item.label}</span>
+                    <span className="max-w-[65%] text-right font-medium text-[var(--text)]">{item.value}</span>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-[20px] border border-[var(--border)] bg-white/68 px-3.5 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">Why this helps</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-muted)]">
+                  The point is not just inspiration. It&apos;s getting you close enough to buying that the seller site becomes the last step, not the whole search.
+                </p>
+              </div>
+
+              <Link
+                href={`/board/${board.id}`}
+                className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2.5 text-sm text-[var(--text)] transition-colors hover:border-[#E8A94A]/40"
+              >
+                See the exact example board
+                <Sparkles className="h-4 w-4 text-[#E8A94A]" />
+              </Link>
+            </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </section>
   )
 }
