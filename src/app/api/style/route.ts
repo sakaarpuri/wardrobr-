@@ -458,6 +458,10 @@ function getTravelClarificationPrompt(
   const specificItemRequest = isSingleSpecificItemRequest(text)
   const groups: ClarificationGroup[] = []
 
+  if (specificItemRequest) {
+    return null
+  }
+
   if (!profile.tripPreference && !alreadyHasMixedTrip) {
     groups.push({
       id: 'trip_preference' as const,

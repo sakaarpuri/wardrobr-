@@ -2,6 +2,7 @@
 
 import { GoogleGenAI, Modality } from '@google/genai'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { resolveVoiceLocale } from '@/lib/voice'
 
 export type VoiceCaptureState = 'idle' | 'listening' | 'processing' | 'error'
 
@@ -171,8 +172,13 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
   }, [clearAutoStopTimeout, closeLiveSession])
 
   const transcribeAudio = useCallback(async (blob: Blob) => {
+    const localeHint = resolveVoiceLocale({
+      browserLanguages: navigator.languages?.length ? navigator.languages : [navigator.language],
+    })
+
     const formData = new FormData()
     formData.append('audio', blob, 'voice-brief.wav')
+    formData.append('localeHint', localeHint)
 
     const response = await fetch('/api/voice/transcribe', {
       method: 'POST',
@@ -189,7 +195,15 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
   }, [])
 
   const fetchLiveToken = useCallback(async () => {
-    const response = await fetch('/api/live-token', { method: 'POST' })
+    const localeHint = resolveVoiceLocale({
+      browserLanguages: navigator.languages?.length ? navigator.languages : [navigator.language],
+    })
+
+    const response = await fetch('/api/live-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ localeHint }),
+    })
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null)

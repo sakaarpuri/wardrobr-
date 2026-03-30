@@ -17,9 +17,9 @@ interface ChatStore {
   occasionContext: string | null
   /** User style profile — injected as context into every Gemini request */
   userProfile: UserProfile
-  /** Message submitted on the homepage, auto-fired when /style mounts */
+  /** Message submitted from the homepage hero, auto-fired when the workspace mounts */
   pendingMessage: PendingMessage | null
-  /** Start listening as soon as the /style workspace opens */
+  /** Start listening as soon as the in-page workspace opens */
   pendingVoiceStart: boolean
 
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => Message

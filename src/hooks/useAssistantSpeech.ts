@@ -34,9 +34,12 @@ export function useAssistantSpeech() {
   const audioContextRef = useRef<AudioContext | null>(null)
   const sourceRef = useRef<AudioBufferSourceNode | null>(null)
   const requestIdRef = useRef(0)
+  const playbackResolveRef = useRef<(() => void) | null>(null)
 
   const stop = useCallback(() => {
     requestIdRef.current += 1
+    playbackResolveRef.current?.()
+    playbackResolveRef.current = null
     sourceRef.current?.stop()
     sourceRef.current?.disconnect()
     sourceRef.current = null
@@ -86,14 +89,22 @@ export function useAssistantSpeech() {
     const source = context.createBufferSource()
     source.buffer = audioBuffer
     source.connect(context.destination)
-    source.onended = () => {
-      if (sourceRef.current === source) {
-        sourceRef.current = null
+    const endedPromise = new Promise<void>((resolve) => {
+      playbackResolveRef.current = resolve
+      source.onended = () => {
+        if (sourceRef.current === source) {
+          sourceRef.current = null
+        }
+        if (playbackResolveRef.current === resolve) {
+          playbackResolveRef.current = null
+        }
+        resolve()
       }
-    }
+    })
 
     sourceRef.current = source
     source.start()
+    await endedPromise
   }, [stop])
 
   return {

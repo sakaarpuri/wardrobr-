@@ -19,7 +19,9 @@ export function VoiceStyler({
 }) {
   const [typedPrompt, setTypedPrompt] = useState('')
   const [showTypedInput, setShowTypedInput] = useState(false)
-  const autoStartedRef = useRef(false)
+  const lastAutoStartRef = useRef(false)
+  const startListeningRef = useRef<(() => Promise<void>) | null>(null)
+  const speakAndResumeRef = useRef<(message?: string | null) => void>(() => {})
 
   const {
     addMessage,
@@ -40,7 +42,9 @@ export function VoiceStyler({
     addMessage({ type: 'user_text', content: text, source })
     const loadingMsg = addMessage({ type: 'system_loading', content: 'Working on it…' })
     setLoading(true)
-    speak('Got it. Working on it.')
+    if (source === 'voice') {
+      void speak('I got it. Working on it.')
+    }
 
     let productStreamId: string | null = null
 
@@ -119,18 +123,20 @@ export function VoiceStyler({
             productStreamId = null
 
             if (event.clarification) {
-              if (event.text) {
-                speak(event.text)
+              if (source === 'voice' && event.text) {
+                speakAndResumeRef.current(event.text)
               }
               addMessage({ type: 'ai_clarification', content: event.text, clarification: event.clarification })
             } else if (event.text && !event.outfitBoard) {
-              speak(event.text)
+              if (source === 'voice') {
+                speakAndResumeRef.current(event.text)
+              }
               addMessage({ type: 'ai_text', content: event.text })
             }
 
             if (event.outfitBoard) {
-              if (event.text) {
-                speak(event.text)
+              if (source === 'voice' && event.text) {
+                speakAndResumeRef.current(event.text)
               }
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
               setCurrentBoard(event.outfitBoard)
@@ -156,7 +162,9 @@ export function VoiceStyler({
         type: 'ai_text',
         content: error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.",
       })
-      speak(error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.")
+      if (source === 'voice') {
+        void speak(error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.")
+      }
     } finally {
       setLoading(false)
     }
@@ -164,12 +172,33 @@ export function VoiceStyler({
 
   const { voiceState, transcript, isSupported, startListening, stopListening, cancelListening } = useVoiceCapture({
     onTranscript: runStyleRequest,
-    continuous: true,
+    continuous: false,
   })
 
+  startListeningRef.current = startListening
+
+  const speakAndResume = useCallback(async (message?: string | null) => {
+    const nextMessage = message?.trim()
+    if (!nextMessage) return
+
+    await speak(nextMessage)
+
+    await new Promise((resolve) => window.setTimeout(resolve, 180))
+    await startListeningRef.current?.()
+  }, [speak])
+
+  speakAndResumeRef.current = (message?: string | null) => {
+    void speakAndResume(message)
+  }
+
   useEffect(() => {
-    if (!autoStart || autoStartedRef.current || !isSupported || voiceState !== 'idle') return
-    autoStartedRef.current = true
+    if (!autoStart) {
+      lastAutoStartRef.current = false
+      return
+    }
+
+    if (lastAutoStartRef.current || !isSupported || voiceState !== 'idle') return
+    lastAutoStartRef.current = true
     onAutoStartHandled?.()
     void startListening()
   }, [autoStart, isSupported, onAutoStartHandled, startListening, voiceState])
@@ -200,10 +229,10 @@ export function VoiceStyler({
 
   return (
     <div className={`rounded-[30px] border border-[rgba(82,126,255,0.18)] bg-[linear-gradient(135deg,rgba(82,126,255,0.16),rgba(104,220,255,0.12),rgba(255,255,255,0.22))] shadow-[0_24px_70px_rgba(49,98,255,0.12)] backdrop-blur-xl ${compact ? 'p-4' : 'p-5'}`}>
-      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className={`font-semibold tracking-tight text-[var(--text)] ${compact ? 'text-lg' : 'text-xl'}`}>
-            {voiceState === 'listening' ? 'Listening now' : 'Voice'}
+            {voiceState === 'listening' ? 'Listening' : voiceState === 'processing' ? 'Working on it' : 'Voice'}
           </h2>
         </div>
         <Sparkles className="h-5 w-5 text-[#E8A94A]" />
@@ -299,7 +328,7 @@ export function VoiceStyler({
                 ? (transcript || 'We could not catch that clearly. Try one short voice tweak.')
                 : voiceState === 'processing'
                 ? 'I got it. I am working that into the picks now.'
-                : 'Say the next tweak naturally. I will jump in once you pause.'}
+                : 'I am listening. Pause when you are done.'}
             </p>
           </div>
 
@@ -328,7 +357,7 @@ export function VoiceStyler({
               ) : (
                 <>
                   <Mic className="h-4 w-4" />
-                  Done now
+                  Stop listening
                 </>
               )}
             </button>

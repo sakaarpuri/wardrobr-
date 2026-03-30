@@ -48,7 +48,7 @@ export default async function AccountPage() {
           <p className="mt-1 text-xs uppercase tracking-[0.24em] text-[var(--text-faint)]">Member account</p>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/style" className="text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]">
+          <Link href="/?workspace=1" className="text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]">
             Back to stylist
           </Link>
           <ThemeToggle />

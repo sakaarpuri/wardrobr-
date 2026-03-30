@@ -19,6 +19,7 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData()
     const audio = formData.get('audio')
+    const localeHint = formData.get('localeHint')
 
     if (!(audio instanceof File)) {
       return NextResponse.json({ error: 'Audio file missing' }, { status: 400 })
@@ -40,7 +41,9 @@ export async function POST(request: Request) {
           data: Buffer.from(bytes).toString('base64'),
         },
       },
-      'Generate a clean transcript of the speech. Detect the spoken language naturally and return only the transcript in the original language and script. No labels, no translation, no commentary.',
+      typeof localeHint === 'string' && localeHint.toLowerCase().startsWith('hi')
+        ? 'Generate a clean transcript of the speech. The shopper may speak Hindi or Indian English. Return only the transcript in the original language and script. No labels, no translation, no commentary.'
+        : 'Generate a clean transcript of the speech. Prefer English transcription unless the speech is clearly another language. Return only the transcript in the original language and script. No labels, no translation, no commentary.',
     ])
 
     const transcript = result.response.text().trim()

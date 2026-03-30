@@ -6,13 +6,23 @@ import { NextResponse } from 'next/server'
  * The client connects directly to Google's WebSocket using this token,
  * keeping the API key server-side and reducing latency.
  */
-export async function POST() {
+function buildTranscriptionInstruction(localeHint?: string | null) {
+  if (localeHint?.toLowerCase().startsWith('hi')) {
+    return 'Transcribe the shopper faithfully in the original language and script. The shopper may speak Hindi or Indian English. Do not answer the shopper, translate, summarize, or add commentary.'
+  }
+
+  return 'Transcribe the shopper faithfully in the original language and script. Prefer English transcription unless the speech is clearly another language. Do not answer the shopper, translate, summarize, or add commentary.'
+}
+
+export async function POST(request: Request) {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 })
   }
 
   try {
+    const payload = await request.json().catch(() => null)
+    const localeHint = typeof payload?.localeHint === 'string' ? payload.localeHint : null
     const ai = new GoogleGenAI({
       apiKey,
       httpOptions: { apiVersion: 'v1alpha' },
@@ -30,8 +40,7 @@ export async function POST() {
             responseModalities: [Modality.TEXT],
             inputAudioTranscription: {},
             temperature: 0.1,
-            systemInstruction:
-              'Transcribe the shopper faithfully in the original language and script. Do not answer the shopper, translate, summarize, or add commentary.',
+            systemInstruction: buildTranscriptionInstruction(localeHint),
           },
         },
         lockAdditionalFields: [

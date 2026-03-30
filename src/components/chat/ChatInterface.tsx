@@ -40,7 +40,7 @@ export function ChatInterface() {
   } = useChatStore()
 
   const bottomRef = useRef<HTMLDivElement>(null)
-  const hasFiredPending = useRef(false)
+  const lastPendingMessageRef = useRef<typeof pendingMessage>(null)
   const isBootingFromHomepage = Boolean(pendingMessage) || (isLoading && messages.length === 0)
   const latestUserTextMessage = [...messages]
     .reverse()
@@ -52,16 +52,6 @@ export function ChatInterface() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  useEffect(() => {
-    if (pendingMessage && !hasFiredPending.current) {
-      hasFiredPending.current = true
-      const { text, imageBase64, imageMimeType, imagePreview } = pendingMessage
-      setPendingMessage(null)
-      handleSend(text, imageBase64, imageMimeType, imagePreview)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const handleSend = async (
     text: string,
@@ -229,6 +219,18 @@ export function ChatInterface() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (pendingMessage && pendingMessage !== lastPendingMessageRef.current) {
+      lastPendingMessageRef.current = pendingMessage
+      const { text, imageBase64, imageMimeType, imagePreview } = pendingMessage
+      setPendingMessage(null)
+      void handleSend(text, imageBase64, imageMimeType, imagePreview)
+    }
+    // handleSend is intentionally excluded here so a new function instance
+    // does not re-fire the same pending request on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingMessage, setPendingMessage])
 
   const handleClarificationSelect = (message: Message, groupId: string, optionId: string) => {
     const clarification = message.clarification

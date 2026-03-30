@@ -1,14 +1,14 @@
 'use client'
 
 import Image from 'next/image'
-import { useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { Camera, Mic, Send, Sparkles, Wand2 } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AuthStatus } from '@/components/auth/AuthStatus'
+import { StyleWorkspace } from '@/components/workspace/StyleWorkspace'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 import { APP_BUILD_LABEL } from '@/lib/version'
 
@@ -124,7 +124,7 @@ function HomeHero({
                 Tap to talk to your stylist
               </p>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
-                Say the trip, event, vibe, or one item you need. We will keep listening on the next screen.
+                Say the trip, event, vibe, or one item you need. I&apos;ll start listening and pull the first picks together right here.
               </p>
             </div>
           </div>
@@ -401,25 +401,41 @@ function MemberMemoryCard() {
 }
 
 export default function HomePage() {
-  const router = useRouter()
-  const { setPendingMessage, setPendingVoiceStart, clearChat, setOccasionContext } = useChatStore()
+  const workspaceRef = useRef<HTMLElement>(null)
+  const [workspaceOpened, setWorkspaceOpened] = useState(false)
+  const [workspaceRequested] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return new URLSearchParams(window.location.search).get('workspace') === '1'
+  })
+  const { setPendingMessage, setPendingVoiceStart, clearChat, setOccasionContext, messages, pendingMessage, pendingVoiceStart, isLoading } = useChatStore()
+  const workspaceVisible = workspaceRequested || workspaceOpened || pendingVoiceStart || Boolean(pendingMessage) || isLoading || messages.length > 0
+
+  useEffect(() => {
+    if (!workspaceVisible) return
+    const timer = window.setTimeout(() => {
+      workspaceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+
+    return () => window.clearTimeout(timer)
+  }, [workspaceVisible])
+
   const handleSubmit = (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => {
     if (!message.trim() && !imageBase64) return
     clearChat()
+    setWorkspaceOpened(true)
     setPendingVoiceStart(false)
     if (message.trim()) {
       setOccasionContext(message.trim())
     }
     setPendingMessage({ text: message.trim(), imageBase64, imageMimeType, imagePreview })
-    router.push('/style')
   }
 
   const handleStartVoice = () => {
     clearChat()
+    setWorkspaceOpened(true)
     setOccasionContext(null)
     setPendingMessage(null)
     setPendingVoiceStart(true)
-    router.push('/style')
   }
 
   return (
@@ -485,9 +501,19 @@ export default function HomePage() {
         </div>
       </main>
 
-      <ProofBoard />
-      <OccasionTicker onSubmit={handleSubmit} />
-      <CapabilityStrip />
+      {workspaceVisible ? (
+        <section ref={workspaceRef} className="px-6 pb-12">
+          <div className="mx-auto max-w-7xl">
+            <StyleWorkspace />
+          </div>
+        </section>
+      ) : (
+        <>
+          <ProofBoard />
+          <OccasionTicker onSubmit={handleSubmit} />
+          <CapabilityStrip />
+        </>
+      )}
       <MemberMemoryCard />
 
       <div className="border-t border-[var(--border)] px-6 py-3 text-center">

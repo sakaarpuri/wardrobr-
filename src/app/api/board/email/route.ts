@@ -48,7 +48,7 @@ function buildEmailHtml(title: string, occasion: string | undefined, products: P
 
         <p style="margin:32px 0 0 0; color:#444; font-size:12px; text-align:center;">
           Styled by <a href="https://wardrobr.ai" style="color:#666;">wardrobr.ai</a> ·
-          <a href="https://wardrobr.ai/style" style="color:#666;">Build another look</a>
+          <a href="https://wardrobr.ai/?workspace=1" style="color:#666;">Build another look</a>
         </p>
       </td>
     </tr>

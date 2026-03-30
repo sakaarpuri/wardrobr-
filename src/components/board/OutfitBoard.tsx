@@ -235,7 +235,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not save board'
       if (message.toLowerCase().includes('sign in')) {
-        window.location.href = '/auth/sign-in?next=/style'
+        window.location.href = '/auth/sign-in?next=/?workspace=1'
         return
       }
       setSaveStatus('error')
