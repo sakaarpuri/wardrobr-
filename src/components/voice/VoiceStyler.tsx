@@ -1,14 +1,24 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ClarificationPrompt, Product } from '@/lib/types'
 import { useVoiceCapture } from '@/hooks/useVoiceCapture'
+import { useAssistantSpeech } from '@/hooks/useAssistantSpeech'
 
-export function VoiceStyler({ compact = false }: { compact?: boolean }) {
+export function VoiceStyler({
+  compact = false,
+  autoStart = false,
+  onAutoStartHandled,
+}: {
+  compact?: boolean
+  autoStart?: boolean
+  onAutoStartHandled?: () => void
+}) {
   const [typedPrompt, setTypedPrompt] = useState('')
   const [showTypedInput, setShowTypedInput] = useState(false)
+  const autoStartedRef = useRef(false)
 
   const {
     addMessage,
@@ -17,6 +27,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
     setOccasionContext,
     userProfile,
   } = useChatStore()
+  const { speak, stop: stopSpeaking } = useAssistantSpeech()
 
   const runStyleRequest = useCallback(async (text: string) => {
     if (!text.trim()) {
@@ -26,8 +37,9 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
     setOccasionContext(text)
 
     addMessage({ type: 'user_text', content: text })
-    const loadingMsg = addMessage({ type: 'system_loading', content: 'I got it. Working on it…' })
+    const loadingMsg = addMessage({ type: 'system_loading', content: 'Working on it…' })
     setLoading(true)
+    speak('Got it. Working on it.')
 
     let productStreamId: string | null = null
 
@@ -106,12 +118,19 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
             productStreamId = null
 
             if (event.clarification) {
+              if (event.text) {
+                speak(event.text)
+              }
               addMessage({ type: 'ai_clarification', content: event.text, clarification: event.clarification })
             } else if (event.text && !event.outfitBoard) {
+              speak(event.text)
               addMessage({ type: 'ai_text', content: event.text })
             }
 
             if (event.outfitBoard) {
+              if (event.text) {
+                speak(event.text)
+              }
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
               setCurrentBoard(event.outfitBoard)
             }
@@ -128,15 +147,29 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
         type: 'ai_text',
         content: error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.",
       })
+      speak(error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.")
     } finally {
       setLoading(false)
     }
-  }, [addMessage, setCurrentBoard, setLoading, setOccasionContext, userProfile])
+  }, [addMessage, setCurrentBoard, setLoading, setOccasionContext, speak, userProfile])
 
   const { voiceState, transcript, isSupported, startListening, stopListening, cancelListening } = useVoiceCapture({
     onTranscript: runStyleRequest,
     continuous: true,
   })
+
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current || !isSupported || voiceState !== 'idle') return
+    autoStartedRef.current = true
+    onAutoStartHandled?.()
+    void startListening()
+  }, [autoStart, isSupported, onAutoStartHandled, startListening, voiceState])
+
+  useEffect(() => {
+    if (voiceState === 'listening') {
+      stopSpeaking()
+    }
+  }, [stopSpeaking, voiceState])
 
   const submitTypedPrompt = useCallback(() => {
     const text = typedPrompt.trim()

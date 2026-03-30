@@ -19,6 +19,8 @@ interface ChatStore {
   userProfile: UserProfile
   /** Message submitted on the homepage, auto-fired when /style mounts */
   pendingMessage: PendingMessage | null
+  /** Start listening as soon as the /style workspace opens */
+  pendingVoiceStart: boolean
 
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => Message
   setLoading: (loading: boolean) => void
@@ -26,6 +28,7 @@ interface ChatStore {
   setOccasionContext: (context: string | null) => void
   setUserProfile: (profile: Partial<UserProfile>) => void
   setPendingMessage: (msg: PendingMessage | null) => void
+  setPendingVoiceStart: (enabled: boolean) => void
   /** Replace one product in a specific board (used by swap feature) */
   swapBoardProduct: (boardId: string, oldProductId: string, newProduct: Product) => void
   clearChat: () => void
@@ -40,6 +43,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   occasionContext: null,
   userProfile: getEmptyUserProfile(),
   pendingMessage: null,
+  pendingVoiceStart: false,
 
   addMessage: (message) => {
     const newMessage: Message = {
@@ -61,6 +65,8 @@ export const useChatStore = create<ChatStore>((set) => ({
     set((state) => ({ userProfile: { ...state.userProfile, ...profile } })),
 
   setPendingMessage: (msg) => set({ pendingMessage: msg }),
+
+  setPendingVoiceStart: (enabled) => set({ pendingVoiceStart: enabled }),
 
   swapBoardProduct: (boardId, oldProductId, newProduct) =>
     set((state) => ({
@@ -87,7 +93,7 @@ export const useChatStore = create<ChatStore>((set) => ({
           : state.currentBoard,
     })),
 
-  clearChat: () => set({ messages: [], currentBoard: null, occasionContext: null }),
+  clearChat: () => set({ messages: [], currentBoard: null, occasionContext: null, pendingMessage: null, pendingVoiceStart: false }),
 
   updateLastMessage: (updates) =>
     set((state) => {

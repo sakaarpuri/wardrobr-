@@ -10,7 +10,6 @@ import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 import { APP_BUILD_LABEL } from '@/lib/version'
-import { useVoiceCapture } from '@/hooks/useVoiceCapture'
 
 const SPOKEN_PROMPTS = [
   'I need a night out look, under sixty quid',
@@ -58,21 +57,16 @@ function formatPrice(value: number) {
   }).format(value)
 }
 
-function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => void }) {
+function HomeHero({
+  onSubmit,
+  onStartVoice,
+}: {
+  onSubmit: (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => void
+  onStartVoice: () => void
+}) {
   const [text, setText] = useState('')
   const [showTypedFallback, setShowTypedFallback] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const { voiceState, transcript, isSupported, startListening, stopListening, cancelListening } = useVoiceCapture({
-    onTranscript: async (nextTranscript) => {
-      setText(nextTranscript)
-      onSubmit(nextTranscript)
-    },
-  })
-
-  const isListening = voiceState === 'listening'
-  const isProcessing = voiceState === 'processing'
-  const hasVoiceError = voiceState === 'error'
 
   const handleSend = () => onSubmit(text)
 
@@ -95,16 +89,6 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
     reader.readAsDataURL(file)
   }
 
-  const handleMic = () => {
-    if (!isSupported) return
-    if (isListening) {
-      stopListening()
-      return
-    }
-    if (isProcessing) return
-    startListening()
-  }
-
   return (
     <div className="w-full max-w-4xl rounded-[36px] border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(240,235,225,0.82))] p-4 shadow-[0_30px_110px_rgba(15,23,42,0.10)] backdrop-blur-xl sm:p-6">
       <div className="space-y-6">
@@ -125,60 +109,25 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
 
         <button
-          onClick={handleMic}
-          disabled={!isSupported || isProcessing}
-          className={`relative w-full overflow-hidden rounded-[32px] border px-5 py-6 text-center transition-all sm:px-8 sm:py-8 ${
-            isListening
-              ? 'border-[#E8A94A]/60 bg-[linear-gradient(135deg,rgba(232,169,74,0.20),rgba(120,215,255,0.14))] shadow-[0_24px_70px_rgba(74,144,226,0.18)]'
-              : 'border-[rgba(72,134,255,0.20)] bg-[linear-gradient(135deg,rgba(82,126,255,0.18),rgba(104,220,255,0.14),rgba(255,255,255,0.24))] hover:border-[rgba(72,134,255,0.34)] hover:shadow-[0_24px_80px_rgba(49,98,255,0.14)]'
-          } ${isProcessing ? 'cursor-wait opacity-80' : ''}`}
+          onClick={onStartVoice}
+          className="relative w-full overflow-hidden rounded-[32px] border border-[rgba(72,134,255,0.20)] bg-[linear-gradient(135deg,rgba(82,126,255,0.18),rgba(104,220,255,0.14),rgba(255,255,255,0.24))] px-5 py-6 text-center transition-all hover:border-[rgba(72,134,255,0.34)] hover:shadow-[0_24px_80px_rgba(49,98,255,0.14)] sm:px-8 sm:py-8"
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,215,255,0.24),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(255,211,144,0.20),transparent_36%)]" />
           <div className="relative flex flex-col items-center gap-4">
             <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(82,126,255,0.22)] bg-white/72 backdrop-blur-sm sm:h-24 sm:w-24">
-              <span className={`absolute inset-[-10px] rounded-full border ${isListening ? 'border-[#E8A94A]/40 animate-ping' : 'border-[rgba(82,126,255,0.18)]'}`} />
-              <Mic className={`h-8 w-8 ${isListening ? 'animate-pulse text-[#E8A94A]' : 'text-[var(--text)]'}`} />
+              <span className="absolute inset-[-10px] rounded-full border border-[rgba(82,126,255,0.18)]" />
+              <Mic className="h-8 w-8 text-[var(--text)]" />
             </div>
             <div>
               <p className="text-2xl font-semibold tracking-tight text-[var(--text)]">
-                {isListening ? 'Listening...' : isProcessing ? 'I got it. Working on it...' : 'Tap to talk to your stylist'}
+                Tap to talk to your stylist
               </p>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
-                {isListening
-                  ? 'Speak naturally in any language. I will jump in when you pause.'
-                  : isProcessing
-                  ? 'Turning that into your first shopping pass now.'
-                  : 'Say the trip, event, vibe, or one item you need. The mic is the main way in.'}
+                Say the trip, event, vibe, or one item you need. We will keep listening on the next screen.
               </p>
             </div>
           </div>
         </button>
-
-        {(isListening || isProcessing || hasVoiceError) && (
-          <div className="rounded-[22px] border border-[var(--border)] bg-white/70 px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-[var(--text)]">
-                {isListening ? 'Listening now' : isProcessing ? 'Working on it' : 'Voice issue'}
-              </p>
-              {isListening && (
-                <button
-                  type="button"
-                  onClick={cancelListening}
-                  className="rounded-full border border-[var(--border)] bg-white/80 px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-            <p className="mt-2 text-[14px] leading-relaxed text-[var(--text-muted)]">
-              {hasVoiceError
-                ? (transcript || 'We could not catch that clearly. Try one short brief and we will take it from there.')
-                : isListening
-                ? 'Say the trip, event, vibe, or item you want help with. I will stop on the pause.'
-                : 'I heard you. Pulling together the first results now.'}
-            </p>
-          </div>
-        )}
 
         <div className="space-y-3">
           <div className="hidden rounded-[28px] border border-[var(--border)] bg-white/72 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm sm:block sm:px-5">
@@ -415,14 +364,23 @@ function CapabilityStrip() {
 
 export default function HomePage() {
   const router = useRouter()
-  const { setPendingMessage, clearChat, setOccasionContext } = useChatStore()
+  const { setPendingMessage, setPendingVoiceStart, clearChat, setOccasionContext } = useChatStore()
   const handleSubmit = (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => {
     if (!message.trim() && !imageBase64) return
     clearChat()
+    setPendingVoiceStart(false)
     if (message.trim()) {
       setOccasionContext(message.trim())
     }
     setPendingMessage({ text: message.trim(), imageBase64, imageMimeType, imagePreview })
+    router.push('/style')
+  }
+
+  const handleStartVoice = () => {
+    clearChat()
+    setOccasionContext(null)
+    setPendingMessage(null)
+    setPendingVoiceStart(true)
     router.push('/style')
   }
 
@@ -480,7 +438,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-8 flex w-full justify-center">
-            <HomeHero onSubmit={handleSubmit} />
+            <HomeHero onSubmit={handleSubmit} onStartVoice={handleStartVoice} />
             <Script src="https://sovrn.co/zs04ts3" strategy="afterInteractive" />
           </div>
         </div>

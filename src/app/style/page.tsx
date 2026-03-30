@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { ChevronDown, Trash2 } from 'lucide-react'
@@ -11,13 +12,23 @@ import { BUDGET_OPTIONS, SHOPPING_FOR_OPTIONS, getSizeOptions, isSizeCompatibleW
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 
 export default function StylePage() {
-  const { clearChat, isLoading, messages, pendingMessage, userProfile, setUserProfile } = useChatStore()
+  const { clearChat, isLoading, messages, pendingMessage, pendingVoiceStart, setPendingVoiceStart, userProfile, setUserProfile } = useChatStore()
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
   const hasShoppableResults = messages.some((message) =>
     message.type === 'ai_product_stream' ||
     message.type === 'ai_outfit_board'
   )
   const showSideRail = hasShoppableResults || (!isLoading && !pendingMessage && messages.length === 0)
   const sizeOptions = getSizeOptions(userProfile.gender)
+  const shouldAutoStartVoice = pendingVoiceStart && !pendingMessage
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)')
+    const sync = () => setIsDesktop(mediaQuery.matches)
+    sync()
+    mediaQuery.addEventListener('change', sync)
+    return () => mediaQuery.removeEventListener('change', sync)
+  }, [])
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
@@ -45,7 +56,10 @@ export default function StylePage() {
         <div className={`mx-auto grid gap-4 ${showSideRail ? 'max-w-7xl lg:grid-cols-[320px_minmax(0,1fr)]' : 'max-w-5xl'}`}>
           {showSideRail && (
             <aside className="hidden space-y-4 lg:block">
-              <VoiceStyler />
+              <VoiceStyler
+                autoStart={Boolean(shouldAutoStartVoice && isDesktop === true)}
+                onAutoStartHandled={() => setPendingVoiceStart(false)}
+              />
               <OptionalDetailsPanel
                 userProfile={userProfile}
                 setUserProfile={setUserProfile}
@@ -66,7 +80,11 @@ export default function StylePage() {
                 title="Talk through a tweak"
                 subtitle="Keep results in view, then open this when you want to change something."
               >
-                <VoiceStyler compact />
+                <VoiceStyler
+                  compact
+                  autoStart={Boolean(shouldAutoStartVoice && isDesktop === false)}
+                  onAutoStartHandled={() => setPendingVoiceStart(false)}
+                />
               </MobileAccordion>
 
               <MobileAccordion
