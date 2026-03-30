@@ -33,6 +33,64 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
   const [email, setEmail] = useState('')
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
+  const handleOpenAllTabs = () => {
+    const urls = board.products
+      .map((product) => product.affiliateUrl || product.productUrl)
+      .filter(Boolean)
+
+    const openedWindows: Window[] = []
+
+    urls.forEach((url, index) => {
+      const popup = window.open(index === 0 ? url : 'about:blank', '_blank', 'noopener,noreferrer')
+      if (popup) {
+        openedWindows.push(popup)
+        if (index > 0) {
+          popup.location.href = url
+        }
+      }
+    })
+
+    if (openedWindows.length < urls.length) {
+      const fallback = window.open('about:blank', '_blank', 'noopener,noreferrer')
+      if (fallback) {
+        const { document } = fallback
+        document.title = 'Shop these picks'
+        document.body.innerHTML = ''
+        document.body.style.fontFamily = 'sans-serif'
+        document.body.style.padding = '24px'
+
+        const heading = document.createElement('h1')
+        heading.textContent = 'Shop these picks'
+        heading.style.fontSize = '20px'
+        heading.style.marginBottom = '16px'
+
+        const note = document.createElement('p')
+        note.textContent = 'Your browser blocked some tabs, so here are the remaining links.'
+        note.style.color = '#666'
+        note.style.marginBottom = '20px'
+
+        const list = document.createElement('ul')
+        list.style.paddingLeft = '20px'
+
+        board.products.forEach((product) => {
+          const item = document.createElement('li')
+          item.style.marginBottom = '10px'
+
+          const link = document.createElement('a')
+          link.href = product.affiliateUrl || product.productUrl
+          link.target = '_blank'
+          link.rel = 'noopener noreferrer'
+          link.textContent = product.name
+
+          item.appendChild(link)
+          list.appendChild(item)
+        })
+
+        document.body.append(heading, note, list)
+      }
+    }
+  }
+
   const handleReplace = async (product: Product, action: SwapActionKey = 'same_vibe') => {
     setSwappingProductId(product.id)
     try {
@@ -179,7 +237,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
           <div className="flex items-center gap-1">
             {/* Open all shop links at once */}
             <button
-              onClick={() => board.products.forEach((product) => window.open(product.affiliateUrl || product.productUrl, '_blank', 'noopener,noreferrer'))}
+              onClick={handleOpenAllTabs}
               className="inline-flex items-center gap-1.5 rounded-full border border-[#E8A94A]/28 bg-[#E8A94A]/10 px-3 py-1.5 text-xs font-medium text-[#E8A94A] transition-all hover:border-[#E8A94A]/45 hover:bg-[#E8A94A]/14"
               title="Open results in separate tabs to shop all"
             >

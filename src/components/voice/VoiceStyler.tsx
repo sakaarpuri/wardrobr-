@@ -193,11 +193,8 @@ export function VoiceStyler({
     <div className={`rounded-[30px] border border-[rgba(82,126,255,0.18)] bg-[linear-gradient(135deg,rgba(82,126,255,0.16),rgba(104,220,255,0.12),rgba(255,255,255,0.22))] shadow-[0_24px_70px_rgba(49,98,255,0.12)] backdrop-blur-xl ${compact ? 'p-4' : 'p-5'}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-            Voice follow-up
-          </p>
-          <h2 className={`mt-2 font-semibold tracking-tight text-[var(--text)] ${compact ? 'text-lg' : 'text-xl'}`}>
-            Keep talking
+          <h2 className={`font-semibold tracking-tight text-[var(--text)] ${compact ? 'text-lg' : 'text-xl'}`}>
+            {voiceState === 'listening' ? 'Listening now' : 'Voice'}
           </h2>
         </div>
         <Sparkles className="h-5 w-5 text-[#E8A94A]" />
@@ -205,9 +202,6 @@ export function VoiceStyler({
 
       {voiceState === 'idle' && (
         <>
-          <p className={`mt-3 leading-relaxed text-[var(--text-muted)] ${compact ? 'text-[13px]' : 'text-sm'}`}>
-            Keep talking naturally to adjust the picks, like cheaper, dressier, or more casual.
-          </p>
           <button
             onClick={startListening}
             className={`mt-4 flex w-full items-center justify-between rounded-[24px] border border-white/35 bg-white/60 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm transition-all hover:border-white/55 hover:bg-white/72 ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}
@@ -217,7 +211,7 @@ export function VoiceStyler({
                 <Mic className="h-5 w-5 text-[var(--text)]" />
               </div>
               <div>
-                <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>Keep talking to Wardrobr</p>
+                <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>Talk to Wardrobr</p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
                   Tap once, speak naturally, and I will jump in when you pause.
                 </p>
@@ -225,23 +219,6 @@ export function VoiceStyler({
             </div>
             <ArrowIndicator label="Tap to talk" />
           </button>
-
-          {!compact && (
-            <div className="mt-4 space-y-2 text-xs text-[var(--text-muted)]">
-              <p>Try saying:</p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  'Trip to India in summer',
-                  'Shaadi guest look under one-fifty',
-                  'Find me one great blazer for work',
-                ].map((prompt) => (
-                  <span key={prompt} className="rounded-full border border-[var(--border)] bg-white/55 px-3 py-1.5">
-                    {prompt}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="mt-4 rounded-[22px] border border-white/35 bg-white/60 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm">
             <div className="flex items-center justify-between gap-3">
@@ -297,7 +274,7 @@ export function VoiceStyler({
 
       {voiceState !== 'idle' && (
         <div className="mt-4 space-y-4">
-            <div className={`rounded-[24px] border border-white/35 bg-white/68 backdrop-blur-sm ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}>
+            <div className={`rounded-[24px] border ${voiceState === 'listening' ? 'border-[#E8A94A]/45 bg-[linear-gradient(135deg,rgba(232,169,74,0.14),rgba(255,255,255,0.68))]' : 'border-white/35 bg-white/68'} backdrop-blur-sm ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">
                 {voiceState === 'listening' ? 'Listening...' : voiceState === 'processing' ? 'Working on it...' : 'Voice issue'}
@@ -313,7 +290,7 @@ export function VoiceStyler({
                 ? (transcript || 'We could not catch that clearly. Try one short voice tweak.')
                 : voiceState === 'processing'
                 ? 'I got it. I am working that into the picks now.'
-                : 'Speak naturally. I will jump in once you pause.'}
+                : 'Say the next tweak naturally. I will jump in once you pause.'}
             </p>
           </div>
 

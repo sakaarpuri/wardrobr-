@@ -1,87 +1,103 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { containsHindiScript } from '@/lib/voice'
+import { useCallback, useRef } from 'react'
+import { resolveSpeechLocale } from '@/lib/voice'
 
-function pickVoice(text: string, voices: SpeechSynthesisVoice[]) {
-  const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language]
-  const normalized = browserLanguages.filter(Boolean).map((lang) => lang.toLowerCase())
-  const wantsHindi = containsHindiScript(text) || normalized.some((lang) => lang.startsWith('hi'))
+function base64ToArrayBuffer(base64: string) {
+  const binary = window.atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes.buffer
+}
 
-  if (wantsHindi) {
-    return voices.find((voice) => voice.lang.toLowerCase().startsWith('hi'))
-      ?? voices.find((voice) => voice.lang.toLowerCase().includes('in'))
-      ?? null
+function pcmToAudioBuffer(
+  context: AudioContext,
+  pcmBuffer: ArrayBuffer,
+  sampleRate = 24000
+) {
+  const pcmView = new DataView(pcmBuffer)
+  const sampleCount = pcmBuffer.byteLength / 2
+  const audioBuffer = context.createBuffer(1, sampleCount, sampleRate)
+  const channelData = audioBuffer.getChannelData(0)
+
+  for (let i = 0; i < sampleCount; i += 1) {
+    const sample = pcmView.getInt16(i * 2, true)
+    channelData[i] = sample / 0x8000
   }
 
-  for (const lang of normalized) {
-    const exact = voices.find((voice) => voice.lang.toLowerCase() === lang)
-    if (exact) return exact
-  }
-
-  for (const lang of normalized) {
-    const primary = lang.split('-')[0]
-    const partial = voices.find((voice) => voice.lang.toLowerCase().startsWith(primary))
-    if (partial) return partial
-  }
-
-  return voices.find((voice) => voice.default) ?? voices[0] ?? null
+  return audioBuffer
 }
 
 export function useAssistantSpeech() {
-  const [isSupported] = useState(
-    () => typeof window !== 'undefined' && 'speechSynthesis' in window
-  )
-  const voicesRef = useRef<SpeechSynthesisVoice[]>([])
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null)
+  const requestIdRef = useRef(0)
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+  const stop = useCallback(() => {
+    requestIdRef.current += 1
+    sourceRef.current?.stop()
+    sourceRef.current?.disconnect()
+    sourceRef.current = null
+  }, [])
+
+  const speak = useCallback(async (text: string) => {
+    const message = text.trim()
+    if (!message) return
+
+    const currentRequest = requestIdRef.current + 1
+    requestIdRef.current = currentRequest
+    stop()
+
+    const locale = resolveSpeechLocale({
+      browserLanguages: navigator.languages?.length ? navigator.languages : [navigator.language],
+      hints: [message],
+    })
+
+    const response = await fetch('/api/voice/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: message, locale }),
+    })
+
+    if (!response.ok) {
       return
     }
 
-    const updateVoices = () => {
-      voicesRef.current = window.speechSynthesis.getVoices()
+    const payload = await response.json()
+    const audioBase64 = String(payload.audioBase64 ?? '')
+    if (!audioBase64 || requestIdRef.current !== currentRequest) {
+      return
     }
 
-    updateVoices()
-    window.speechSynthesis.addEventListener('voiceschanged', updateVoices)
-
-    return () => {
-      window.speechSynthesis.removeEventListener('voiceschanged', updateVoices)
-      window.speechSynthesis.cancel()
-    }
-  }, [])
-
-  const stop = useCallback(() => {
-    if (!isSupported) return
-    window.speechSynthesis.cancel()
-  }, [isSupported])
-
-  const speak = useCallback((text: string) => {
-    const message = text.trim()
-    if (!isSupported || !message) return
-
-    window.speechSynthesis.cancel()
-
-    const utterance = new SpeechSynthesisUtterance(message)
-    const voice = pickVoice(message, voicesRef.current)
-
-    if (voice) {
-      utterance.voice = voice
-      utterance.lang = voice.lang
-    } else {
-      utterance.lang = containsHindiScript(message) ? 'hi-IN' : (navigator.languages?.[0] || navigator.language || 'en-GB')
+    const AudioContextCtor = window.AudioContext ?? window.webkitAudioContext
+    if (!AudioContextCtor) {
+      return
     }
 
-    utterance.rate = 0.98
-    utterance.pitch = 1
-    utterance.volume = 1
+    const context = audioContextRef.current ?? new AudioContextCtor()
+    audioContextRef.current = context
+    if (context.state === 'suspended') {
+      await context.resume()
+    }
 
-    window.speechSynthesis.speak(utterance)
-  }, [isSupported])
+    const audioBuffer = pcmToAudioBuffer(context, base64ToArrayBuffer(audioBase64))
+    const source = context.createBufferSource()
+    source.buffer = audioBuffer
+    source.connect(context.destination)
+    source.onended = () => {
+      if (sourceRef.current === source) {
+        sourceRef.current = null
+      }
+    }
+
+    sourceRef.current = source
+    source.start()
+  }, [stop])
 
   return {
-    isSupported,
+    isSupported: typeof window !== 'undefined' && Boolean(window.AudioContext ?? window.webkitAudioContext),
     speak,
     stop,
   }

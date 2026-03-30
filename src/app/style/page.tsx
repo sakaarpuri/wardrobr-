@@ -77,8 +77,9 @@ export default function StylePage() {
             <div className="order-2 space-y-3 lg:hidden">
               <MobileAccordion
                 label="Voice"
-                title="Talk through a tweak"
-                subtitle="Keep results in view, then open this when you want to change something."
+                title="Voice"
+                subtitle="Open this when you want to adjust the picks."
+                defaultOpen={Boolean(shouldAutoStartVoice && isDesktop === false)}
               >
                 <VoiceStyler
                   compact
@@ -88,8 +89,8 @@ export default function StylePage() {
               </MobileAccordion>
 
               <MobileAccordion
-                label="Optional details"
-                title="Budget, size, shopping for"
+                label=""
+                title="Add a few details"
                 subtitle="Only add these if you want sharper picks."
               >
                 <OptionalDetailsPanel
@@ -101,7 +102,7 @@ export default function StylePage() {
               </MobileAccordion>
 
               <MobileAccordion
-                label="Starter boards"
+                label=""
                 title="Open an exact example look"
                 subtitle="Useful if you want to compare against a finished board."
               >
@@ -134,12 +135,8 @@ function OptionalDetailsPanel({ userProfile, setUserProfile, sizeOptions, compac
     <section className={`rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)]/85 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm ${compact ? 'p-4' : 'p-5'}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-            Optional details
-          </p>
           <h2 className={`mt-2 font-semibold text-[var(--text)] ${compact ? 'text-base' : 'text-lg'}`}>Add a few details</h2>
         </div>
-        <span className="text-[11px] text-[var(--text-faint)]">Optional</span>
       </div>
 
       <div className={`space-y-4 ${compact ? 'mt-3' : 'mt-4'}`}>
@@ -223,7 +220,7 @@ function StarterBoardsPanel({ compact = false }: { compact?: boolean }) {
   return (
     <section className={`rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)]/85 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm ${compact ? 'p-4' : 'p-5'}`}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-        Starter Boards
+        Explore starter boards
       </p>
       <div className={`${compact ? 'mt-3' : 'mt-4'} space-y-3`}>
         {EXAMPLE_BOARDS.map((board) => (
@@ -251,15 +248,16 @@ interface MobileAccordionProps {
   title: string
   subtitle: string
   children: ReactNode
+  defaultOpen?: boolean
 }
 
-function MobileAccordion({ label, title, subtitle, children }: MobileAccordionProps) {
+function MobileAccordion({ label, title, subtitle, children, defaultOpen = false }: MobileAccordionProps) {
   return (
-    <details className="overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--bg-card)]/88 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+    <details open={defaultOpen} className="overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--bg-card)]/88 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm">
       <summary className="list-none cursor-pointer px-4 py-3.5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">{label}</p>
+            {label ? <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">{label}</p> : null}
             <p className="mt-1 text-[15px] font-semibold text-[var(--text)]">{title}</p>
             <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">{subtitle}</p>
           </div>
