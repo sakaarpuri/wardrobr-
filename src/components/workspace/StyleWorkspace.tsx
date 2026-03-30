@@ -12,6 +12,14 @@ import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 import { applyMemberPreferencesToProfile, type MemberPreferences } from '@/lib/member-memory'
 
 export function StyleWorkspace() {
+  return <StyleWorkspaceInner embedded={false} />
+}
+
+export function EmbeddedStyleWorkspace() {
+  return <StyleWorkspaceInner embedded />
+}
+
+function StyleWorkspaceInner({ embedded }: { embedded: boolean }) {
   const { clearChat, pendingMessage, pendingVoiceStart, setPendingVoiceStart, userProfile, setUserProfile } = useChatStore()
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
   const [memberLoaded, setMemberLoaded] = useState(false)
@@ -61,9 +69,10 @@ export function StyleWorkspace() {
   }, [setUserProfile])
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+    <div className={`grid gap-4 ${embedded ? 'lg:grid-cols-[280px_minmax(0,1fr)]' : 'lg:grid-cols-[320px_minmax(0,1fr)]'}`}>
       <aside className="hidden space-y-4 lg:block">
         <VoiceStyler
+          engaged={embedded}
           autoStart={Boolean(shouldAutoStartVoice && isDesktop === true)}
           onAutoStartHandled={() => setPendingVoiceStart(false)}
         />
@@ -77,36 +86,39 @@ export function StyleWorkspace() {
         <StarterBoardsPanel />
       </aside>
 
-      <section className="order-1 min-h-[70vh] overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)]/88 shadow-[0_24px_90px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:rounded-[32px]">
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 sm:px-5">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
-              Shopping assistant
-            </p>
-            <p className="mt-1 text-sm font-medium text-[var(--text)]">
-              Results appear here as soon as I hear enough.
-            </p>
+      <section className={`order-1 min-h-[70vh] overflow-hidden border border-[var(--border)] bg-[var(--bg-card)]/88 backdrop-blur-sm ${embedded ? 'rounded-[26px] shadow-[0_16px_60px_rgba(15,23,42,0.06)]' : 'rounded-[28px] shadow-[0_24px_90px_rgba(15,23,42,0.08)] sm:rounded-[32px]'}`}>
+        {!embedded && (
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 sm:px-5">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
+                Shopping assistant
+              </p>
+              <p className="mt-1 text-sm font-medium text-[var(--text)]">
+                Results appear here as soon as I hear enough.
+              </p>
+            </div>
+            <button
+              onClick={clearChat}
+              className="flex items-center gap-1.5 text-xs text-[var(--text-faint)] transition-colors hover:text-[var(--text-muted)]"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear
+            </button>
           </div>
-          <button
-            onClick={clearChat}
-            className="flex items-center gap-1.5 text-xs text-[var(--text-faint)] transition-colors hover:text-[var(--text-muted)]"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Clear
-          </button>
-        </div>
+        )}
         <ChatInterface />
       </section>
 
       <div className="order-2 space-y-3 lg:hidden">
         <MobileAccordion
           label=""
-          title="Voice"
-          subtitle="The mic stays here while you keep refining."
+          title={embedded ? 'Mic' : 'Voice'}
+          subtitle={embedded ? 'This stays live while you keep refining.' : 'The mic stays here while you keep refining.'}
           defaultOpen={Boolean(shouldAutoStartVoice && isDesktop === false)}
         >
           <VoiceStyler
             compact
+            engaged={embedded}
             autoStart={Boolean(shouldAutoStartVoice && isDesktop === false)}
             onAutoStartHandled={() => setPendingVoiceStart(false)}
           />

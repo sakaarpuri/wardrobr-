@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
@@ -8,7 +9,7 @@ import { Camera, Mic, Send, Sparkles, Wand2 } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AuthStatus } from '@/components/auth/AuthStatus'
-import { StyleWorkspace } from '@/components/workspace/StyleWorkspace'
+import { EmbeddedStyleWorkspace } from '@/components/workspace/StyleWorkspace'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 import { APP_BUILD_LABEL } from '@/lib/version'
 
@@ -61,9 +62,13 @@ function formatPrice(value: number) {
 function HomeHero({
   onSubmit,
   onStartVoice,
+  expanded = false,
+  children,
 }: {
   onSubmit: (message: string, imageBase64?: string, imageMimeType?: string, imagePreview?: string) => void
   onStartVoice: () => void
+  expanded?: boolean
+  children?: ReactNode
 }) {
   const [text, setText] = useState('')
   const [showTypedFallback, setShowTypedFallback] = useState(false)
@@ -91,42 +96,51 @@ function HomeHero({
   }
 
   return (
-    <div className="w-full max-w-4xl rounded-[36px] border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(240,235,225,0.82))] p-4 shadow-[0_30px_110px_rgba(15,23,42,0.10)] backdrop-blur-xl sm:p-6">
-      <div className="space-y-6">
-        <div className="mx-auto max-w-2xl text-center">
+    <div className={`w-full rounded-[36px] border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(240,235,225,0.82))] shadow-[0_30px_110px_rgba(15,23,42,0.10)] backdrop-blur-xl ${expanded ? 'max-w-7xl p-4 sm:p-5' : 'max-w-4xl p-4 sm:p-6'}`}>
+      <div className={`space-y-6 ${expanded ? 'space-y-4' : ''}`}>
+        <div className={`mx-auto text-center ${expanded ? 'max-w-3xl' : 'max-w-2xl'}`}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--text-faint)]">
-              Voice-first stylist
+              {expanded ? 'Wardrobr is on it' : 'Voice-first stylist'}
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text)] sm:text-3xl">
-              Start with your voice, then refine if you want to.
+              {expanded ? 'Keep going in the same place.' : 'Start with your voice, then refine if you want to.'}
             </h2>
           </div>
-          <p className="mt-3 text-xs text-[var(--text-faint)]">
-            The quickest route in is the mic. Typing and photo matching stay here as backup.
-          </p>
+          {!expanded && (
+            <p className="mt-3 text-xs text-[var(--text-faint)]">
+              The quickest route in is the mic. Typing and photo matching stay here as backup.
+            </p>
+          )}
         </div>
 
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
 
         <button
           onClick={onStartVoice}
-          className="relative w-full overflow-hidden rounded-[32px] border border-[rgba(72,134,255,0.20)] bg-[linear-gradient(135deg,rgba(82,126,255,0.18),rgba(104,220,255,0.14),rgba(255,255,255,0.24))] px-5 py-6 text-center transition-all hover:border-[rgba(72,134,255,0.34)] hover:shadow-[0_24px_80px_rgba(49,98,255,0.14)] sm:px-8 sm:py-8"
+          className={`relative w-full overflow-hidden rounded-[32px] border border-[rgba(72,134,255,0.20)] bg-[linear-gradient(135deg,rgba(82,126,255,0.18),rgba(104,220,255,0.14),rgba(255,255,255,0.24))] text-center transition-all hover:border-[rgba(72,134,255,0.34)] hover:shadow-[0_24px_80px_rgba(49,98,255,0.14)] ${expanded ? 'px-4 py-4 sm:px-5 sm:py-5' : 'px-5 py-6 sm:px-8 sm:py-8'}`}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,215,255,0.24),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(255,211,144,0.20),transparent_36%)]" />
-          <div className="relative flex flex-col items-center gap-4">
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(82,126,255,0.22)] bg-white/72 backdrop-blur-sm sm:h-24 sm:w-24">
+          <div className={`relative flex items-center justify-center gap-4 ${expanded ? 'flex-col sm:flex-row sm:justify-between' : 'flex-col'}`}>
+            <div className={`relative flex items-center justify-center rounded-full border border-[rgba(82,126,255,0.22)] bg-white/72 backdrop-blur-sm ${expanded ? 'h-16 w-16 sm:h-18 sm:w-18' : 'h-20 w-20 sm:h-24 sm:w-24'}`}>
               <span className="absolute inset-[-10px] rounded-full border border-[rgba(82,126,255,0.18)]" />
               <Mic className="h-8 w-8 text-[var(--text)]" />
             </div>
-            <div>
-              <p className="text-2xl font-semibold tracking-tight text-[var(--text)]">
-                Tap to talk to your stylist
+            <div className={`${expanded ? 'flex-1 text-center sm:text-left' : ''}`}>
+              <p className={`${expanded ? 'text-xl sm:text-2xl' : 'text-2xl'} font-semibold tracking-tight text-[var(--text)]`}>
+                {expanded ? 'Mic stays in this card while I keep working.' : 'Tap to talk to your stylist'}
               </p>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
-                Say the trip, event, vibe, or one item you need. I&apos;ll start listening and pull the first picks together right here.
-              </p>
+              {!expanded && (
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
+                  Say the trip, event, vibe, or one item you need. I&apos;ll start listening and pull the first picks together right here.
+                </p>
+              )}
             </div>
+            {expanded && (
+              <div className="rounded-full border border-[rgba(82,126,255,0.22)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--text)]">
+                Tap to jump back in
+              </div>
+            )}
           </div>
         </button>
 
@@ -218,22 +232,30 @@ function HomeHero({
           </div>
         </div>
 
-        <div className="space-y-3 text-left">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
-            Or try saying...
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {SPOKEN_PROMPTS.map((prompt) => (
-              <button
-                key={prompt}
-                onClick={() => onSubmit(prompt)}
-                className="rounded-full border border-[var(--border)] bg-white/78 px-3.5 py-1.5 text-xs text-[var(--text-muted)] transition-all hover:border-[#E8A94A]/50 hover:bg-[#E8A94A]/5 hover:text-[#E8A94A]"
-              >
-                “{prompt}”
-              </button>
-            ))}
+        {!expanded && (
+          <div className="space-y-3 text-left">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
+              Or try saying...
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SPOKEN_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => onSubmit(prompt)}
+                  className="rounded-full border border-[var(--border)] bg-white/78 px-3.5 py-1.5 text-xs text-[var(--text-muted)] transition-all hover:border-[#E8A94A]/50 hover:bg-[#E8A94A]/5 hover:text-[#E8A94A]"
+                >
+                  “{prompt}”
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {expanded && children ? (
+          <div className="border-t border-[rgba(82,126,255,0.12)] pt-4 sm:pt-5">
+            {children}
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -401,7 +423,7 @@ function MemberMemoryCard() {
 }
 
 export default function HomePage() {
-  const workspaceRef = useRef<HTMLElement>(null)
+  const workspaceRef = useRef<HTMLDivElement>(null)
   const [workspaceOpened, setWorkspaceOpened] = useState(false)
   const [workspaceRequested] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -484,7 +506,7 @@ export default function HomePage() {
           }}
         />
 
-        <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center">
+        <div className={`relative z-10 mx-auto flex w-full flex-col items-center ${workspaceVisible ? 'max-w-7xl' : 'max-w-4xl'}`}>
           <div className="max-w-3xl">
             <h1 className="text-balance text-4xl font-semibold tracking-tight text-[var(--text)] sm:text-6xl">
               Tell me what you&apos;re dressing for and I&apos;ll find a full shoppable outfit in seconds.
@@ -494,20 +516,16 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-8 flex w-full justify-center">
-            <HomeHero onSubmit={handleSubmit} onStartVoice={handleStartVoice} />
+          <div ref={workspaceRef} className={`mt-8 flex w-full justify-center ${workspaceVisible ? 'max-w-7xl' : ''}`}>
+            <HomeHero onSubmit={handleSubmit} onStartVoice={handleStartVoice} expanded={workspaceVisible}>
+              <EmbeddedStyleWorkspace />
+            </HomeHero>
             <Script src="https://sovrn.co/zs04ts3" strategy="afterInteractive" />
           </div>
         </div>
       </main>
 
-      {workspaceVisible ? (
-        <section ref={workspaceRef} className="px-6 pb-12 -mt-1 sm:-mt-2">
-          <div className="mx-auto max-w-7xl">
-            <StyleWorkspace />
-          </div>
-        </section>
-      ) : (
+      {workspaceVisible ? null : (
         <>
           <ProofBoard />
           <OccasionTicker onSubmit={handleSubmit} />

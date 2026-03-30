@@ -8,12 +8,34 @@ import { useVoiceCapture } from '@/hooks/useVoiceCapture'
 import { useAssistantSpeech } from '@/hooks/useAssistantSpeech'
 import { recordMemberEvent } from '@/lib/member-memory-client'
 
+function getVoiceFollowUp(board: import('@/lib/types').OutfitBoard) {
+  const categories = [...new Set(board.products.map((product) => product.category).filter(Boolean))]
+  const categoryLabel = categories[0]?.replace(/_/g, ' ') ?? 'picks'
+  const count = board.products.length
+
+  if (board.boardType === 'shortlist') {
+    return `I found ${count} ${categoryLabel} options. Want them cleaner, dressier, or cheaper?`
+  }
+
+  if (categories.includes('outerwear') || categories.includes('jackets')) {
+    return 'I pulled together a look with a jacket doing the heavy lifting. Want it cleaner, softer, or dressier?'
+  }
+
+  if (categories.includes('shoes')) {
+    return 'I found a look anchored by the shoes. Want me to make it sharper, more relaxed, or cheaper?'
+  }
+
+  return 'I found the first look. Want me to make it cheaper, cleaner, or more dressy?'
+}
+
 export function VoiceStyler({
   compact = false,
+  engaged = false,
   autoStart = false,
   onAutoStartHandled,
 }: {
   compact?: boolean
+  engaged?: boolean
   autoStart?: boolean
   onAutoStartHandled?: () => void
 }) {
@@ -135,8 +157,8 @@ export function VoiceStyler({
             }
 
             if (event.outfitBoard) {
-              if (source === 'voice' && event.text) {
-                speakAndResumeRef.current(event.text)
+              if (source === 'voice') {
+                speakAndResumeRef.current(getVoiceFollowUp(event.outfitBoard))
               }
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
               setCurrentBoard(event.outfitBoard)
@@ -249,13 +271,17 @@ export function VoiceStyler({
                 <Mic className="h-5 w-5 text-[var(--text)]" />
               </div>
               <div>
-                <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>Talk to Wardrobr</p>
-                <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
-                  Tap once, speak naturally, and I will jump in when you pause.
+                <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>
+                  {engaged ? 'Mic ready' : 'Talk to Wardrobr'}
                 </p>
+                {!engaged && (
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+                    Tap once, speak naturally, and I will jump in when you pause.
+                  </p>
+                )}
               </div>
             </div>
-            <ArrowIndicator label="Tap to talk" />
+            <ArrowIndicator label={engaged ? 'Speak' : 'Tap to talk'} />
           </button>
 
           <div className="mt-4 rounded-[22px] border border-white/35 bg-white/60 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm">
@@ -264,9 +290,11 @@ export function VoiceStyler({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-faint)]">
                   Type instead
                 </p>
-                <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-muted)]">
-                  Quick for a small change, like cheaper, darker, or flats instead.
-                </p>
+                {!engaged && (
+                  <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-muted)]">
+                    Quick for a small change, like cheaper, darker, or flats instead.
+                  </p>
+                )}
               </div>
               <button
                 type="button"
@@ -328,6 +356,8 @@ export function VoiceStyler({
                 ? (transcript || 'We could not catch that clearly. Try one short voice tweak.')
                 : voiceState === 'processing'
                 ? 'I got it. I am working that into the picks now.'
+                : engaged
+                ? 'I am listening.'
                 : 'I am listening. Pause when you are done.'}
             </p>
           </div>
