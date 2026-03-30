@@ -68,6 +68,12 @@ export function ProductCard({ product, onReplace, isSwapping, onBuildLook, build
   const showPlaceholder = !currentImage || imgFailed
   const swapActions = getSwapActions(product.category)
   const handoff = getProductHandoff(product)
+  const ctaLabel =
+    handoff.capability === 'cart_supported'
+      ? 'Cart ready'
+      : handoff.capability === 'variant_selectable'
+      ? 'Choose size'
+      : 'View item'
 
   return (
     <div className="group bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border)] hover:border-[var(--border-hover)] transition-all duration-300">
@@ -125,7 +131,7 @@ export function ProductCard({ product, onReplace, isSwapping, onBuildLook, build
       </div>
 
       {/* Product Info */}
-      <div className="space-y-1.5 p-2.5 sm:p-2">
+      <div className="space-y-2 p-3 sm:p-2.5">
         <div>
           <p className="text-[11px] font-medium uppercase leading-none tracking-wider text-[var(--text-muted)] sm:text-[10px]">
             {product.brand}
@@ -134,6 +140,39 @@ export function ProductCard({ product, onReplace, isSwapping, onBuildLook, build
             {product.name}
           </p>
         </div>
+
+        {product.decisionBadges && product.decisionBadges.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {product.decisionBadges.slice(0, 2).map((badge) => (
+              <span
+                key={badge}
+                className="rounded-full border border-[#E8A94A]/28 bg-[#E8A94A]/10 px-2 py-1 text-[10px] font-medium text-[#E8A94A]"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {product.decisionNote && (
+          <p className="text-[11px] leading-relaxed text-[var(--text)] sm:text-[10px]">
+            {product.decisionNote}
+          </p>
+        )}
+
+        {(product.watchoutNote || product.fitGuidance?.text || product.brandSubstitutionNote) && (
+          <div className="space-y-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-2">
+            {product.brandSubstitutionNote && (
+              <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">{product.brandSubstitutionNote}</p>
+            )}
+            {product.watchoutNote && (
+              <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">{product.watchoutNote}</p>
+            )}
+            {product.fitGuidance?.text && (
+              <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">{product.fitGuidance.text}</p>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-[var(--text)] sm:text-xs">{formattedPrice}</p>
@@ -163,11 +202,15 @@ export function ProductCard({ product, onReplace, isSwapping, onBuildLook, build
                 })
               }}
             >
-              {handoff.kind === 'cart' ? 'Cart' : 'Shop'}
+              {ctaLabel}
               <ExternalLink className="w-2.5 h-2.5" />
             </a>
           </div>
         </div>
+
+        <p className="text-[10px] leading-relaxed text-[var(--text-faint)]">
+          {handoff.reason}
+        </p>
 
         {onReplace && (
           <div className="flex flex-wrap gap-1.5 pt-1">

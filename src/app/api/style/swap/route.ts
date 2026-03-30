@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { searchProducts, rewriteAffiliateUrl } from '@/lib/affiliate'
 import { UserProfile, getSearchPriceCap, normaliseUserProfile } from '@/lib/shopper'
 import { buildProtectedSearchQuery, constrainProductsToProtectedAttributes, extractProtectedAttributesFromProduct, extractProtectedAttributesFromText, mergeProtectedAttributes } from '@/lib/product-attributes'
+import { buildDecisionReadyProducts, detectRequestedBrand } from '@/lib/decision-assist'
 
 export async function POST(req: NextRequest) {
   try {
@@ -60,10 +61,17 @@ export async function POST(req: NextRequest) {
       maxPrice: maxPrice ?? getSearchPriceCap(profile) ?? undefined,
     })
     const constrained = constrainProductsToProtectedAttributes(result.products, protectedAttributes)
+    const decisionReady = buildDecisionReadyProducts({
+      products: constrained.products,
+      requestText: `${occasionContext ?? ''} ${refinementText ?? ''}`.trim(),
+      budgetCap: getSearchPriceCap(profile) ?? undefined,
+      requestedBrand: detectRequestedBrand(`${occasionContext ?? ''} ${refinementText ?? ''}`),
+      protectedAttributes,
+    })
 
     // Rewrite affiliate URLs server-side before returning to client
     const alternatives = await Promise.all(
-      constrained.products
+      decisionReady.products
         .filter((p) => p.name !== productName)
         .slice(0, 3)
         .map(async (p) => ({

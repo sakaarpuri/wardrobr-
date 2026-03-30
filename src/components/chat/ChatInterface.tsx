@@ -343,9 +343,9 @@ export function ChatInterface() {
 
           {messages.length === 0 && !isBootingFromHomepage && (
             <div className="rounded-[28px] border border-[var(--border)] bg-[var(--bg-subtle)]/88 p-5 backdrop-blur-sm">
-              <p className="text-base font-semibold text-[var(--text)] sm:text-sm">Voice is the main way in here.</p>
+              <p className="text-base font-semibold text-[var(--text)] sm:text-sm">Start with one clear shopping ask.</p>
               <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-[var(--text-muted)] sm:text-sm">
-                Speak to the stylist from the panel on the left, or type a quick brief below if that is easier right now.
+                Use the mic or type a brief and I&apos;ll turn it into a shortlist or full look you can actually compare and shop.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {STARTER_REQUESTS.map((suggestion) => (

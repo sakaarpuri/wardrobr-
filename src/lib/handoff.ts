@@ -2,12 +2,16 @@ import type { OutfitBoard, Product } from './types'
 
 export type ProductHandoffKind = 'cart' | 'product'
 export type BoardHandoffKind = 'cart' | 'single_store' | 'tabs'
+export type ProductHandoffCapability = 'cart_supported' | 'variant_selectable' | 'single_store_groupable' | 'pdp_only'
 
 export interface ProductHandoff {
   kind: ProductHandoffKind
   url: string
   storeName: string
   platform: 'shopify' | 'woocommerce' | 'generic'
+  capability: ProductHandoffCapability
+  label: string
+  reason: string
 }
 
 export interface BoardHandoffPlan {
@@ -17,6 +21,7 @@ export interface BoardHandoffPlan {
   urls: string[]
   singleUrl?: string
   storeName?: string
+  capability: ProductHandoffCapability | 'mixed'
 }
 
 function safeUrl(rawUrl: string | undefined) {
@@ -74,6 +79,9 @@ export function getProductHandoff(product: Product): ProductHandoff {
       url: product.productUrl,
       storeName: product.storeName,
       platform: 'generic',
+      capability: 'pdp_only',
+      label: 'Open product page',
+      reason: 'Best available link is the product page for this item.',
     }
   }
 
@@ -85,7 +93,20 @@ export function getProductHandoff(product: Product): ProductHandoff {
         url: buildShopifyCartUrl(parsed, variantId),
         storeName: product.storeName,
         platform: 'shopify',
+        capability: 'cart_supported',
+        label: `Cart ready at ${product.storeName}`,
+        reason: 'This item supports a direct cart handoff.',
       }
+    }
+
+    return {
+      kind: 'product',
+      url: rawUrl,
+      storeName: product.storeName,
+      platform: 'shopify',
+      capability: 'variant_selectable',
+      label: 'Open product page',
+      reason: 'Best available link is the product page, with merchant-side variant selection.',
     }
   }
 
@@ -95,6 +116,9 @@ export function getProductHandoff(product: Product): ProductHandoff {
       url: parsed.toString(),
       storeName: product.storeName,
       platform: 'woocommerce',
+      capability: 'cart_supported',
+      label: `Cart ready at ${product.storeName}`,
+      reason: 'This store supports add-to-cart links for this product.',
     }
   }
 
@@ -103,6 +127,9 @@ export function getProductHandoff(product: Product): ProductHandoff {
     url: rawUrl,
     storeName: product.storeName,
     platform: 'generic',
+    capability: 'pdp_only',
+    label: 'Open product page',
+    reason: 'Best available link is the product page for this item.',
   }
 }
 
@@ -139,6 +166,7 @@ export function getBoardHandoffPlan(board: OutfitBoard): BoardHandoffPlan {
           singleUrl: `${firstUrl.origin}/cart/${variants.join(',')}`,
           urls: handoffs.map(({ handoff }) => handoff.url),
           storeName: board.products[0].storeName,
+          capability: 'cart_supported',
         }
       }
     }
@@ -151,6 +179,7 @@ export function getBoardHandoffPlan(board: OutfitBoard): BoardHandoffPlan {
       description: 'Everything in this board comes from one store.',
       urls: handoffs.map(({ handoff }) => handoff.url),
       storeName: board.products[0].storeName,
+      capability: 'single_store_groupable',
     }
   }
 
@@ -159,5 +188,6 @@ export function getBoardHandoffPlan(board: OutfitBoard): BoardHandoffPlan {
     label: 'Open results in tabs',
     description: 'We will use cart links where supported, and product pages for the rest.',
     urls: handoffs.map(({ handoff }) => handoff.url),
+    capability: 'mixed',
   }
 }

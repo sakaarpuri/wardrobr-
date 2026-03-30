@@ -111,7 +111,7 @@ function StyleWorkspaceInner({ embedded, showVoicePanel = true }: { embedded: bo
         <ChatInterface />
       </section>
 
-      <div className="order-2 space-y-3 lg:hidden">
+      <div className="order-2 space-y-2.5 lg:hidden">
         {showVoicePanel && (
           <MobileAccordion
             label=""
@@ -131,7 +131,7 @@ function StyleWorkspaceInner({ embedded, showVoicePanel = true }: { embedded: bo
         <MobileAccordion
           label=""
           title="Add a few details"
-          subtitle="Only add these if you want sharper picks."
+          subtitle="Optional"
         >
           <OptionalDetailsPanel
             userProfile={userProfile}
@@ -146,7 +146,7 @@ function StyleWorkspaceInner({ embedded, showVoicePanel = true }: { embedded: bo
         <MobileAccordion
           label=""
           title="Explore starter boards"
-          subtitle="Useful if you want to compare against a finished board."
+          subtitle="Optional"
         >
           <StarterBoardsPanel compact />
         </MobileAccordion>
@@ -301,15 +301,15 @@ interface MobileAccordionProps {
 
 function MobileAccordion({ label, title, subtitle, children, defaultOpen = false }: MobileAccordionProps) {
   return (
-    <details open={defaultOpen} className="overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--bg-card)]/88 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm">
-      <summary className="list-none cursor-pointer px-4 py-3.5">
+    <details open={defaultOpen} className="overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--bg-card)]/88 shadow-[0_14px_40px_rgba(15,23,42,0.05)] backdrop-blur-sm">
+      <summary className="list-none cursor-pointer px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             {label ? <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">{label}</p> : null}
-            <p className="mt-1 text-[15px] font-semibold text-[var(--text)]">{title}</p>
-            <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">{subtitle}</p>
+            <p className="text-[14px] font-semibold text-[var(--text)]">{title}</p>
+            {subtitle ? <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-muted)]">{subtitle}</p> : null}
           </div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-subtle)]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-subtle)]">
             <ChevronDown className="h-4 w-4 text-[var(--text-muted)]" />
           </div>
         </div>

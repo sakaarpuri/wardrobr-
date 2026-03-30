@@ -25,6 +25,15 @@ export interface Product {
   category: string
   description?: string
   aiExplanation?: string
+  decisionNote?: string
+  watchoutNote?: string
+  brandSubstitutionNote?: string
+  fitGuidance?: {
+    text: string
+    confidence: 'low' | 'medium' | 'high'
+    source: 'feed' | 'heuristic' | 'brand_map'
+  }
+  decisionBadges?: string[]
 }
 
 export interface StyleAnalysis {
@@ -51,6 +60,15 @@ export interface OutfitBoard {
   budgetRemaining?: number | null
   budgetStatus?: 'under' | 'over' | 'unknown'
   warnings?: string[]
+  brandRequest?: string | null
+  brandSubstitutionNote?: string | null
+  bestOverallProductId?: string | null
+  bestBudgetProductId?: string | null
+  closestBrandMatchProductId?: string | null
+  quickRefineActions?: Array<{
+    label: string
+    prompt: string
+  }>
 }
 
 export interface ClarificationOption {

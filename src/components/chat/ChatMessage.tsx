@@ -101,7 +101,7 @@ export function ChatMessage({ message, onClarificationSelect }: ChatMessageProps
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.25, delay: i * 0.05 }}
-              className="w-32 flex-shrink-0 sm:w-28"
+              className="w-44 flex-shrink-0 sm:w-32"
             >
               <ProductCard product={product} />
             </motion.div>

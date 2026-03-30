@@ -9,6 +9,7 @@ import { ProtectedProductAttributes, buildProtectedSearchQuery, constrainProduct
 import { buildMemberMemoryContext, getMemberMemorySnapshot } from '@/lib/member-memory'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
+import { buildBoardQuickRefineActions, buildDecisionReadyProducts, detectRequestedBrand } from '@/lib/decision-assist'
 import crypto from 'crypto'
 
 // Allow up to 60s on Vercel (Pro) — Gemini agentic loop can take 15-25s
@@ -144,6 +145,7 @@ export async function POST(req: NextRequest) {
   const currentAnchorProduct = anchorProduct ?? (currentBoard?.products.length === 1 ? currentBoard.products[0] : null)
   const explicitProtectedAttributes = extractProtectedAttributesFromText(message ?? '')
   const anchorProtectedAttributes = extractProtectedAttributesFromProduct(currentAnchorProduct)
+  const requestedBrand = detectRequestedBrand(message ?? '')
   let memberMemoryContext = ''
 
   if (isSupabaseConfigured()) {
@@ -252,23 +254,30 @@ export async function POST(req: NextRequest) {
               })
               const searchResult = await searchProducts(applyShopperConstraints(params, profile, effectiveProtectedAttributes))
               const constrainedSearch = constrainProductsToProtectedAttributes(searchResult.products, effectiveProtectedAttributes)
+              const enrichedSearch = buildDecisionReadyProducts({
+                products: constrainedSearch.products,
+                requestText: message,
+                budgetCap: getBudgetCap(profile.budget, profile.budgetMax),
+                requestedBrand,
+                protectedAttributes: effectiveProtectedAttributes,
+              })
 
               if (constrainedSearch.disclosure) {
                 searchConstraintNotices.add(constrainedSearch.disclosure)
               }
 
-              for (const product of constrainedSearch.products) {
+              for (const product of enrichedSearch.products) {
                 collectedProducts.set(product.id, product)
                 productCache.set(product.id, product)
               }
 
               // Emit products immediately so the UI can show them live
-              if (constrainedSearch.products.length > 0) {
-                emit({ type: 'products', products: constrainedSearch.products })
+              if (enrichedSearch.products.length > 0) {
+                emit({ type: 'products', products: enrichedSearch.products })
               }
 
               fnResult = {
-                products: constrainedSearch.products.map(p => ({
+                products: enrichedSearch.products.map(p => ({
                   id: p.id,
                   name: p.name,
                   brand: p.brand,
@@ -278,7 +287,7 @@ export async function POST(req: NextRequest) {
                   category: p.category,
                   description: p.description,
                 })),
-                total: constrainedSearch.products.length,
+                total: enrichedSearch.products.length,
               }
             } else if (call.name === 'get_product_details') {
               const { productId } = call.args as { productId: string }
@@ -301,13 +310,21 @@ export async function POST(req: NextRequest) {
                 styleNote?: string
               }
 
-              const boardProducts = productIds
+              let boardProducts = productIds
                 .map(id => collectedProducts.get(id) ?? productCache.get(id))
                 .filter((p): p is Product => !!p)
+              const budgetCap = getBudgetCap(profile.budget, profile.budgetMax)
+              const decisionReady = buildDecisionReadyProducts({
+                products: boardProducts,
+                requestText: message,
+                budgetCap,
+                requestedBrand,
+                protectedAttributes: mergeProtectedAttributes(explicitProtectedAttributes, anchorProtectedAttributes),
+              })
+              boardProducts = decisionReady.products
               const totalPrice = boardProducts.reduce((sum, product) => sum + product.price, 0)
               const boardType = getBoardType(boardProducts)
               const pricingReference = getBudgetReferenceTotal(boardProducts, boardType)
-              const budgetCap = getBudgetCap(profile.budget, profile.budgetMax)
 
               outfitBoard = {
                 id: crypto.randomUUID(),
@@ -331,6 +348,22 @@ export async function POST(req: NextRequest) {
                   boardType,
                   Array.from(searchConstraintNotices)
                 ),
+                brandRequest: requestedBrand,
+                brandSubstitutionNote: decisionReady.brandSubstitutionNote,
+                bestOverallProductId: decisionReady.bestOverallProductId,
+                bestBudgetProductId: decisionReady.bestBudgetProductId,
+                closestBrandMatchProductId: decisionReady.closestBrandMatchProductId,
+                quickRefineActions: boardType === 'shortlist'
+                  ? buildBoardQuickRefineActions({
+                      board: {
+                        products: boardProducts,
+                        boardType,
+                        brandRequest: requestedBrand,
+                      },
+                      requestedBrand,
+                      protectedAttributes: mergeProtectedAttributes(explicitProtectedAttributes, anchorProtectedAttributes),
+                    })
+                  : undefined,
               }
 
               fnResult = { success: true, boardId: outfitBoard.id, productCount: boardProducts.length }

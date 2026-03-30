@@ -11,6 +11,7 @@ import { track } from '@/lib/posthog'
 import { SwapActionKey, formatCurrency } from '@/lib/shopper'
 import { recordMemberEvent, saveBoardForMember } from '@/lib/member-memory-client'
 import { getBoardHandoffPlan } from '@/lib/handoff'
+import { buildBoardLeadNote, getBudgetHelperLine } from '@/lib/decision-assist'
 
 interface OutfitBoardProps {
   board: OutfitBoardType
@@ -43,8 +44,64 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
 
     const openedWindows: Window[] = []
 
+    const openGroupedLinkPage = (title: string, note: string) => {
+      const fallback = window.open('about:blank', '_blank', 'noopener,noreferrer')
+      if (!fallback) return
+
+      const { document } = fallback
+      document.title = title
+      document.body.innerHTML = ''
+      document.body.style.fontFamily = 'sans-serif'
+      document.body.style.padding = '24px'
+
+      const heading = document.createElement('h1')
+      heading.textContent = title
+      heading.style.fontSize = '20px'
+      heading.style.marginBottom = '16px'
+
+      const copy = document.createElement('p')
+      copy.textContent = note
+      copy.style.color = '#666'
+      copy.style.marginBottom = '20px'
+
+      const list = document.createElement('ul')
+      list.style.paddingLeft = '20px'
+
+      board.products.forEach((product, index) => {
+        const item = document.createElement('li')
+        item.style.marginBottom = '10px'
+
+        const link = document.createElement('a')
+        link.href = urls[index] ?? product.affiliateUrl ?? product.productUrl
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        link.textContent = `${product.name} — ${product.storeName}`
+
+        item.appendChild(link)
+        list.appendChild(item)
+      })
+
+      document.body.append(heading, copy, list)
+    }
+
     if (handoffPlan.kind === 'cart' && handoffPlan.singleUrl) {
       window.open(handoffPlan.singleUrl, '_blank', 'noopener,noreferrer')
+      void recordMemberEvent('open_all_tabs', {
+        boardId: board.id,
+        metadata: {
+          productCount: board.products.length,
+          handoffKind: handoffPlan.kind,
+          singleStore: handoffPlan.storeName ?? null,
+        },
+      })
+      return
+    }
+
+    if (handoffPlan.kind === 'single_store') {
+      openGroupedLinkPage(
+        `Shop this look at ${handoffPlan.storeName ?? 'the store'}`,
+        'Everything in this board comes from one store, so you can compare the picks here and then open only the item you want.'
+      )
       void recordMemberEvent('open_all_tabs', {
         boardId: board.id,
         metadata: {
@@ -67,43 +124,10 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
     })
 
     if (openedWindows.length < urls.length) {
-      const fallback = window.open('about:blank', '_blank', 'noopener,noreferrer')
-      if (fallback) {
-        const { document } = fallback
-        document.title = 'Shop these picks'
-        document.body.innerHTML = ''
-        document.body.style.fontFamily = 'sans-serif'
-        document.body.style.padding = '24px'
-
-        const heading = document.createElement('h1')
-        heading.textContent = 'Shop these picks'
-        heading.style.fontSize = '20px'
-        heading.style.marginBottom = '16px'
-
-        const note = document.createElement('p')
-        note.textContent = 'Your browser blocked some tabs, so here are the remaining links.'
-        note.style.color = '#666'
-        note.style.marginBottom = '20px'
-
-        const list = document.createElement('ul')
-        list.style.paddingLeft = '20px'
-
-        urls.forEach((url, index) => {
-          const item = document.createElement('li')
-          item.style.marginBottom = '10px'
-
-          const link = document.createElement('a')
-          link.href = url
-          link.target = '_blank'
-          link.rel = 'noopener noreferrer'
-          link.textContent = board.products[index]?.name ?? url
-
-          item.appendChild(link)
-          list.appendChild(item)
-        })
-
-        document.body.append(heading, note, list)
-      }
+      openGroupedLinkPage(
+        'Shop these picks',
+        'Your browser blocked some tabs, so here are the remaining product links.'
+      )
     }
 
     void recordMemberEvent('open_all_tabs', {
@@ -267,6 +291,8 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
         ? `Most expensive pick leaves ${formatCurrency(board.budgetRemaining)} headroom.`
         : `Most expensive pick is ${formatCurrency(Math.abs(board.budgetRemaining))} over budget.`
       : null
+  const leadNote = buildBoardLeadNote(board)
+  const budgetHelperLine = getBudgetHelperLine(board)
   const budgetTone =
     board.budgetStatus === 'over'
       ? 'border-rose-400/30 bg-rose-400/10 text-rose-100'
@@ -277,12 +303,16 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
   // Fewer columns on mobile makes comparison easier for shoppers.
   const gridCols =
     board.products.length <= 2
-      ? 'grid-cols-2'
+      ? 'grid-cols-1 min-[480px]:grid-cols-2'
       : board.products.length === 3
-      ? 'grid-cols-2 sm:grid-cols-3'
-      : 'grid-cols-2 sm:grid-cols-4'
+      ? 'grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3'
+      : 'grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
   const canBuildLookFromItem = board.boardType === 'shortlist' || board.products.length === 1
   const buildLookLabel = board.products.length === 1 ? 'Build a full look from this' : 'Build a look'
+  const handleQuickRefine = (prompt: string) => {
+    setOccasionContext(prompt)
+    setPendingMessage({ text: prompt })
+  }
 
   return (
     <>
@@ -293,16 +323,19 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
         className="space-y-3"
       >
         {/* Board Header */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h3 className="text-[var(--text)] font-semibold text-base">{board.title}</h3>
             {board.occasion && (
               <p className="text-[var(--text-muted)] text-xs mt-0.5">{board.occasion}</p>
             )}
+            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-faint)]">
+              {handoffPlan.description}
+            </p>
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1.5">
             {/* Open all shop links at once */}
             <button
               onClick={handleOpenAllTabs}
@@ -354,7 +387,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
           </div>
         </div>
 
-        {(board.styleNote || board.budgetLabel || totalPrice > 0) && (
+        {(leadNote || board.budgetLabel || totalPrice > 0 || board.brandSubstitutionNote || board.quickRefineActions?.length) && (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 space-y-2">
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
@@ -367,9 +400,14 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
                   {board.budgetStatus === 'over' ? 'Over' : board.budgetStatus === 'under' ? 'Within' : 'Budget'} {board.budgetLabel}
                 </span>
               )}
+              {board.brandRequest && board.closestBrandMatchProductId && board.brandSubstitutionNote && (
+                <span className="rounded-full border border-[#E8A94A]/28 bg-[#E8A94A]/10 px-3 py-1 text-[11px] text-[#E8A94A]">
+                  Closest available to {board.brandRequest}
+                </span>
+              )}
             </div>
-            {board.styleNote && (
-              <p className="text-xs leading-relaxed text-[var(--text-muted)]">{board.styleNote}</p>
+            {leadNote && (
+              <p className="text-xs leading-relaxed text-[var(--text-muted)]">{leadNote}</p>
             )}
             {isShortlist && (
               <p className="text-[11px] text-[var(--text-faint)]">
@@ -380,10 +418,23 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
               <p className="text-[11px] text-[var(--text-faint)]">
                 {board.budgetRemaining !== null && board.budgetRemaining !== undefined
                   ? isShortlist
-                    ? shortlistBudgetCopy
+                    ? budgetHelperLine ?? shortlistBudgetCopy
                     : `Budget remaining ${formatCurrency(Math.max(board.budgetRemaining, 0))}`
                   : `Budget cap ${formatCurrency(board.budgetCap)}`}
               </p>
+            )}
+            {board.quickRefineActions && board.quickRefineActions.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {board.quickRefineActions.map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => handleQuickRefine(action.prompt)}
+                    className="rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-[11px] text-[var(--text-muted)] transition-colors hover:border-[#E8A94A]/35 hover:text-[var(--text)]"
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
             )}
             {board.warnings && board.warnings.length > 0 && (
               <div className="space-y-1">
@@ -435,7 +486,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
 
         {canBuildLookFromItem && (
           <p className="text-[11px] text-[var(--text-faint)]">
-            {board.products.length > 1 ? 'Select one to see a full look to go with it.' : 'Build a full look around this pick before you head out to the retailer.'}
+            {board.products.length > 1 ? 'Select one to see a full look to go with it before you head out to the seller.' : 'Build a full look around this pick before you head out to the retailer.'}
           </p>
         )}
 
