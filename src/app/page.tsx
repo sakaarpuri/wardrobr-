@@ -451,7 +451,7 @@ export default function HomePage() {
         </div>
       </nav>
 
-      <main className="relative px-6 pt-14 pb-10 text-center sm:pt-18">
+      <main className={`relative px-6 pt-14 text-center sm:pt-18 ${workspaceVisible ? 'pb-4 sm:pb-3' : 'pb-10'}`}>
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -502,7 +502,7 @@ export default function HomePage() {
       </main>
 
       {workspaceVisible ? (
-        <section ref={workspaceRef} className="px-6 pb-12">
+        <section ref={workspaceRef} className="px-6 pb-12 -mt-1 sm:-mt-2">
           <div className="mx-auto max-w-7xl">
             <StyleWorkspace />
           </div>
