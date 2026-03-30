@@ -29,14 +29,14 @@ export function VoiceStyler({
   } = useChatStore()
   const { speak, stop: stopSpeaking } = useAssistantSpeech()
 
-  const runStyleRequest = useCallback(async (text: string) => {
+  const runStyleRequest = useCallback(async (text: string, source: 'voice' | 'typed' = 'voice') => {
     if (!text.trim()) {
       return
     }
 
     setOccasionContext(text)
 
-    addMessage({ type: 'user_text', content: text })
+    addMessage({ type: 'user_text', content: text, source })
     const loadingMsg = addMessage({ type: 'system_loading', content: 'Working on it…' })
     setLoading(true)
     speak('Got it. Working on it.')
@@ -175,7 +175,7 @@ export function VoiceStyler({
     const text = typedPrompt.trim()
     if (!text) return
     setTypedPrompt('')
-    void runStyleRequest(text)
+    void runStyleRequest(text, 'typed')
   }, [runStyleRequest, typedPrompt])
 
   if (!isSupported) {

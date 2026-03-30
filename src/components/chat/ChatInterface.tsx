@@ -5,7 +5,7 @@ import { useChatStore } from '@/store/chatStore'
 import { ChatMessage } from './ChatMessage'
 import { track } from '@/lib/posthog'
 import { ClarificationPrompt, Message, Product } from '@/lib/types'
-import { getBudgetLabel, getMissionTitle, getTripPreferenceTitle, inferProfileFromReply, isLikelyClarificationReply, normaliseUserProfile } from '@/lib/shopper'
+import { buildWorkingSummary, getBudgetLabel, getMissionTitle, getTripPreferenceTitle, inferProfileFromReply, isLikelyClarificationReply, normaliseUserProfile } from '@/lib/shopper'
 
 const STARTER_REQUESTS = [
   'Trip to India in summer',
@@ -41,6 +41,12 @@ export function ChatInterface() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const hasFiredPending = useRef(false)
   const isBootingFromHomepage = Boolean(pendingMessage) || (isLoading && messages.length === 0)
+  const latestUserTextMessage = [...messages]
+    .reverse()
+    .find((message) => message.type === 'user_text' && message.content?.trim())
+  const latestVoiceMessage = latestUserTextMessage?.source === 'voice' ? latestUserTextMessage : null
+  const activeRequestText = occasionContext ?? pendingMessage?.text ?? getLatestUserRequest(messages)
+  const workingSummary = buildWorkingSummary(activeRequestText, userProfile)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -94,7 +100,7 @@ export function ChatInterface() {
     if (!options?.silent && imageBase64) {
       addMessage({ type: 'user_image', content: text || undefined, imageUrl: imagePreview, imageBase64 })
     } else if (!options?.silent && text) {
-      addMessage({ type: 'user_text', content: text })
+      addMessage({ type: 'user_text', content: text, source: 'typed' })
     }
 
     const loadingMsg = addMessage({ type: 'system_loading' })
@@ -259,6 +265,29 @@ export function ChatInterface() {
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5" style={{ scrollbarWidth: 'thin' }}>
         <div className="mx-auto w-full max-w-3xl space-y-4">
+          {workingSummary && (
+            <div className="rounded-[24px] border border-[rgba(82,126,255,0.14)] bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(240,244,255,0.88))] px-4 py-3.5 shadow-[0_12px_40px_rgba(15,23,42,0.05)] sm:px-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
+                Working on
+              </p>
+              <p className="mt-2 text-[15px] font-medium leading-relaxed text-[var(--text)] sm:text-sm">
+                {workingSummary}
+              </p>
+              {latestVoiceMessage?.content && (
+                <details className="mt-3">
+                  <summary className="cursor-pointer list-none text-[12px] text-[var(--text-muted)] transition-colors hover:text-[var(--text)]">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white/72 px-3 py-1.5">
+                      Show what I heard
+                    </span>
+                  </summary>
+                  <p className="mt-2 rounded-[18px] border border-[var(--border)] bg-white/70 px-3.5 py-3 text-[13px] leading-relaxed text-[var(--text-muted)]">
+                    {latestVoiceMessage.content}
+                  </p>
+                </details>
+              )}
+            </div>
+          )}
+
           {(userProfile.mission || userProfile.tripPreference || userProfile.budget || userProfile.budgetMax || userProfile.size || userProfile.gender || userProfile.shoeSize || userProfile.occasionStrictness || userProfile.fitNotes) && (
             <div className="flex flex-wrap gap-2">
               {userProfile.mission && (
@@ -315,9 +344,9 @@ export function ChatInterface() {
                 Looking now
               </p>
               <h2 className="mt-2 text-xl font-semibold text-[var(--text)] sm:text-lg">Pulling together your first picks</h2>
-              {pendingMessage?.text && (
+              {workingSummary && (
                 <p className="mt-3 text-[15px] leading-relaxed text-[var(--text-muted)] sm:text-sm">
-                  {pendingMessage.text}
+                  {workingSummary}
                 </p>
               )}
             </div>

@@ -29,6 +29,10 @@ function PulsingDots() {
 }
 
 export function ChatMessage({ message, onClarificationSelect }: ChatMessageProps) {
+  if (message.type === 'user_text' && message.source === 'voice') {
+    return null
+  }
+
   const isUser = message.type === 'user_text' || message.type === 'user_image'
   const isLoading = message.type === 'system_loading'
 

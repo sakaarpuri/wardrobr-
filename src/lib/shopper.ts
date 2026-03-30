@@ -292,6 +292,47 @@ export function getBudgetLabel(profile: Pick<UserProfile, 'budget' | 'budgetMax'
   return profile.budget
 }
 
+export function buildWorkingSummary(
+  requestText: string | null | undefined,
+  profile: Pick<UserProfile, 'gender' | 'budget' | 'budgetMax' | 'tripPreference' | 'mission'>
+) {
+  const cleanedRequest = requestText?.replace(/\s+/g, ' ').trim() ?? ''
+  const summaryParts: string[] = []
+  const requestLower = cleanedRequest.toLowerCase()
+  const budgetLabel = getBudgetLabel(profile)
+
+  if (cleanedRequest) {
+    summaryParts.push(cleanedRequest.charAt(0).toUpperCase() + cleanedRequest.slice(1))
+  } else if (profile.mission) {
+    summaryParts.push(getMissionTitle(profile.mission) ?? 'Your first picks')
+  } else {
+    summaryParts.push('Your first picks')
+  }
+
+  if (
+    profile.tripPreference &&
+    !/(daytime|day \+ dinner|day and dinner|dinner|dressy|dressier|casual|mixed|both)/.test(requestLower)
+  ) {
+    summaryParts.push(getTripPreferenceTitle(profile.tripPreference) ?? '')
+  }
+
+  if (
+    budgetLabel &&
+    !/(under|below|budget|max|maximum|£|\bquid\b|\bpounds\b)/.test(requestLower)
+  ) {
+    summaryParts.push(budgetLabel)
+  }
+
+  if (
+    profile.gender &&
+    !/\b(men|men's|mens|male|women|women's|womens|woman|female)\b/.test(requestLower)
+  ) {
+    summaryParts.push(profile.gender === 'men' ? 'For men' : 'For women')
+  }
+
+  return summaryParts.filter(Boolean).join(' · ')
+}
+
 export function formatCurrency(amount: number, currency = 'GBP') {
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',

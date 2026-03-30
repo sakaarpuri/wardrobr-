@@ -78,6 +78,7 @@ export interface Message {
   id: string
   type: MessageType
   content?: string
+  source?: 'typed' | 'voice'
   imageUrl?: string
   imageBase64?: string
   products?: Product[]
