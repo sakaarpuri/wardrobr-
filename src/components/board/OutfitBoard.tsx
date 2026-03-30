@@ -10,6 +10,7 @@ import { useChatStore } from '@/store/chatStore'
 import { track } from '@/lib/posthog'
 import { SwapActionKey, formatCurrency } from '@/lib/shopper'
 import { recordMemberEvent, saveBoardForMember } from '@/lib/member-memory-client'
+import { getBoardHandoffPlan } from '@/lib/handoff'
 
 interface OutfitBoardProps {
   board: OutfitBoardType
@@ -17,6 +18,7 @@ interface OutfitBoardProps {
 
 export function OutfitBoard({ board }: OutfitBoardProps) {
   const { occasionContext, swapBoardProduct, userProfile } = useChatStore()
+  const handoffPlan = getBoardHandoffPlan(board)
 
   // Swap state
   const [swappingProductId, setSwappingProductId] = useState<string | null>(null)
@@ -36,11 +38,22 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   const handleOpenAllTabs = () => {
-    const urls = board.products
-      .map((product) => product.affiliateUrl || product.productUrl)
-      .filter(Boolean)
+    const urls = handoffPlan.urls.filter(Boolean)
 
     const openedWindows: Window[] = []
+
+    if (handoffPlan.kind === 'cart' && handoffPlan.singleUrl) {
+      window.open(handoffPlan.singleUrl, '_blank', 'noopener,noreferrer')
+      void recordMemberEvent('open_all_tabs', {
+        boardId: board.id,
+        metadata: {
+          productCount: board.products.length,
+          handoffKind: handoffPlan.kind,
+          singleStore: handoffPlan.storeName ?? null,
+        },
+      })
+      return
+    }
 
     urls.forEach((url, index) => {
       const popup = window.open(index === 0 ? url : 'about:blank', '_blank', 'noopener,noreferrer')
@@ -74,15 +87,15 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
         const list = document.createElement('ul')
         list.style.paddingLeft = '20px'
 
-        board.products.forEach((product) => {
+        urls.forEach((url, index) => {
           const item = document.createElement('li')
           item.style.marginBottom = '10px'
 
           const link = document.createElement('a')
-          link.href = product.affiliateUrl || product.productUrl
+          link.href = url
           link.target = '_blank'
           link.rel = 'noopener noreferrer'
-          link.textContent = product.name
+          link.textContent = board.products[index]?.name ?? url
 
           item.appendChild(link)
           list.appendChild(item)
@@ -94,7 +107,11 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
 
     void recordMemberEvent('open_all_tabs', {
       boardId: board.id,
-      metadata: { productCount: board.products.length },
+      metadata: {
+        productCount: board.products.length,
+        handoffKind: handoffPlan.kind,
+        singleStore: handoffPlan.storeName ?? null,
+      },
     })
   }
 
@@ -274,10 +291,10 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
             <button
               onClick={handleOpenAllTabs}
               className="inline-flex items-center gap-1.5 rounded-full border border-[#E8A94A]/28 bg-[#E8A94A]/10 px-3 py-1.5 text-xs font-medium text-[#E8A94A] transition-all hover:border-[#E8A94A]/45 hover:bg-[#E8A94A]/14"
-              title="Open results in separate tabs to shop all"
+              title={handoffPlan.description}
             >
               <ShoppingBag className="h-3.5 w-3.5" />
-              <span>Open results in tabs</span>
+              <span>{handoffPlan.label}</span>
             </button>
 
             <button

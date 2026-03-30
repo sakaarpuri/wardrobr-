@@ -6,6 +6,7 @@ import { Product } from '@/lib/types'
 import { ExternalLink, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { SwapActionKey, getSwapActions } from '@/lib/shopper'
 import { recordMemberEvent } from '@/lib/member-memory-client'
+import { getProductHandoff } from '@/lib/handoff'
 
 const CATEGORY_STYLES: Record<string, { gradient: string; label: string }> = {
   tops:        { gradient: 'from-stone-800 to-stone-700',   label: 'Top' },
@@ -64,6 +65,7 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
 
   const showPlaceholder = !currentImage || imgFailed
   const swapActions = getSwapActions(product.category)
+  const handoff = getProductHandoff(product)
 
   return (
     <div className="group bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border)] hover:border-[var(--border-hover)] transition-all duration-300">
@@ -134,7 +136,7 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-[var(--text)] sm:text-xs">{formattedPrice}</p>
           <a
-            href={product.affiliateUrl}
+            href={handoff.url}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 rounded-md bg-[#E8A94A] px-2.5 py-1.5 text-[11px] font-semibold text-[#1A0E00] transition-colors hover:bg-[#f0b85a] sm:px-2 sm:py-1 sm:text-[10px]"
@@ -142,11 +144,14 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
               e.stopPropagation()
               void recordMemberEvent('shop_click', {
                 product,
-                metadata: { source: 'product_card' },
+                metadata: {
+                  source: 'product_card',
+                  handoffKind: handoff.kind,
+                },
               })
             }}
           >
-            Shop
+            {handoff.kind === 'cart' ? 'Cart' : 'Shop'}
             <ExternalLink className="w-2.5 h-2.5" />
           </a>
         </div>
