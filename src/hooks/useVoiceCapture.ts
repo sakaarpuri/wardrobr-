@@ -9,6 +9,7 @@ export type VoiceCaptureState = 'idle' | 'listening' | 'processing' | 'error'
 interface UseVoiceCaptureOptions {
   onTranscript: (transcript: string) => Promise<void> | void
   continuous?: boolean
+  idleTimeoutMs?: number
 }
 
 type LiveSession = Awaited<ReturnType<GoogleGenAI['live']['connect']>>
@@ -96,7 +97,7 @@ async function wait(ms: number) {
   await new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
-export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCaptureOptions) {
+export function useVoiceCapture({ onTranscript, continuous = false, idleTimeoutMs = 0 }: UseVoiceCaptureOptions) {
   const [voiceState, setVoiceState] = useState<VoiceCaptureState>('idle')
   const [transcript, setTranscript] = useState('')
   const [isSupported, setIsSupported] = useState(true)
@@ -117,6 +118,7 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
   const liveErrorRef = useRef<string | null>(null)
   const liveReadyRef = useRef(false)
   const autoStopTimeoutRef = useRef<number | null>(null)
+  const idleTimeoutRef = useRef<number | null>(null)
   const hasHeardSpeechRef = useRef(false)
   const restartListeningRef = useRef<(() => void) | null>(null)
 
@@ -157,6 +159,13 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
     }
   }, [])
 
+  const clearIdleTimeout = useCallback(() => {
+    if (idleTimeoutRef.current !== null) {
+      window.clearTimeout(idleTimeoutRef.current)
+      idleTimeoutRef.current = null
+    }
+  }, [])
+
   const reset = useCallback(() => {
     if (!mountedRef.current) return
     setVoiceState('idle')
@@ -168,8 +177,9 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
     resolveLiveTranscriptRef.current = null
     liveErrorRef.current = null
     clearAutoStopTimeout()
+    clearIdleTimeout()
     closeLiveSession()
-  }, [clearAutoStopTimeout, closeLiveSession])
+  }, [clearAutoStopTimeout, clearIdleTimeout, closeLiveSession])
 
   const transcribeAudio = useCallback(async (blob: Blob) => {
     const localeHint = resolveVoiceLocale({
@@ -265,6 +275,7 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
 
   const teardownAudioGraph = useCallback(async () => {
     clearAutoStopTimeout()
+    clearIdleTimeout()
     processorRef.current?.disconnect()
     sourceRef.current?.disconnect()
     gainRef.current?.disconnect()
@@ -277,7 +288,7 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
       await audioContextRef.current.close()
       audioContextRef.current = null
     }
-  }, [clearAutoStopTimeout])
+  }, [clearAutoStopTimeout, clearIdleTimeout])
 
   const handleStop = useCallback(async () => {
     const merged = mergeBuffers(chunksRef.current)
@@ -370,6 +381,18 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
       setTranscript('')
       setVoiceState('listening')
 
+      if (idleTimeoutMs > 0) {
+        idleTimeoutRef.current = window.setTimeout(() => {
+          idleTimeoutRef.current = null
+          if (!mountedRef.current || hasHeardSpeechRef.current) return
+          shouldSubmitRef.current = false
+          resolveLiveTranscript()
+          closeLiveSession()
+          void teardownAudioGraph()
+          reset()
+        }, idleTimeoutMs)
+      }
+
       try {
         await beginLiveSession()
       } catch {
@@ -390,6 +413,7 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
         if (rms > 0.018) {
           hasHeardSpeechRef.current = true
           clearAutoStopTimeout()
+          clearIdleTimeout()
         } else if (hasHeardSpeechRef.current && autoStopTimeoutRef.current === null) {
           autoStopTimeoutRef.current = window.setTimeout(() => {
             autoStopTimeoutRef.current = null
@@ -420,7 +444,7 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
       setTranscript('Microphone access is needed for voice styling.')
       closeLiveSession()
     }
-  }, [beginLiveSession, clearAutoStopTimeout, closeLiveSession, handleStop])
+  }, [beginLiveSession, clearAutoStopTimeout, clearIdleTimeout, closeLiveSession, handleStop, idleTimeoutMs, reset, resolveLiveTranscript, teardownAudioGraph])
 
   useEffect(() => {
     restartListeningRef.current = () => {
@@ -436,11 +460,12 @@ export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCa
   const cancelListening = useCallback(() => {
     shouldSubmitRef.current = false
     clearAutoStopTimeout()
+    clearIdleTimeout()
     resolveLiveTranscript()
     closeLiveSession()
     void teardownAudioGraph()
     reset()
-  }, [clearAutoStopTimeout, closeLiveSession, reset, resolveLiveTranscript, teardownAudioGraph])
+  }, [clearAutoStopTimeout, clearIdleTimeout, closeLiveSession, reset, resolveLiveTranscript, teardownAudioGraph])
 
   return {
     voiceState,

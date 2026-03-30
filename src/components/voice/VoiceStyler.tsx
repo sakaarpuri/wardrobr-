@@ -3,29 +3,42 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
-import { ClarificationPrompt, Product } from '@/lib/types'
+import { ClarificationPrompt, OutfitBoard, Product } from '@/lib/types'
 import { useVoiceCapture } from '@/hooks/useVoiceCapture'
 import { useAssistantSpeech } from '@/hooks/useAssistantSpeech'
 import { recordMemberEvent } from '@/lib/member-memory-client'
 
-function getVoiceFollowUp(board: import('@/lib/types').OutfitBoard) {
+function getCategoryLabel(board: OutfitBoard) {
   const categories = [...new Set(board.products.map((product) => product.category).filter(Boolean))]
-  const categoryLabel = categories[0]?.replace(/_/g, ' ') ?? 'picks'
+  return categories[0]?.replace(/_/g, ' ') ?? 'picks'
+}
+
+function getVoiceFollowUp(board: OutfitBoard): { text: string; reopenMic: boolean } {
+  const categoryLabel = getCategoryLabel(board)
   const count = board.products.length
 
   if (board.boardType === 'shortlist') {
-    return `I found ${count} ${categoryLabel} options. Want them cleaner, dressier, or cheaper?`
+    return {
+      text: `Here are ${count} ${categoryLabel}. Want me to narrow by price, material finish, or brand?`,
+      reopenMic: true,
+    }
   }
 
-  if (categories.includes('outerwear') || categories.includes('jackets')) {
-    return 'I pulled together a look with a jacket doing the heavy lifting. Want it cleaner, softer, or dressier?'
+  if (count === 1) {
+    return {
+      text: `Here is one strong ${categoryLabel}. Want me to change the price, finish, or build a full look around it?`,
+      reopenMic: true,
+    }
   }
 
-  if (categories.includes('shoes')) {
-    return 'I found a look anchored by the shoes. Want me to make it sharper, more relaxed, or cheaper?'
+  return {
+    text: 'Here are the first picks.',
+    reopenMic: false,
   }
+}
 
-  return 'I found the first look. Want me to make it cheaper, cleaner, or more dressy?'
+function shouldReopenForText(text?: string | null) {
+  return /\?\s*$/.test(text?.trim() ?? '')
 }
 
 export function VoiceStyler({
@@ -44,7 +57,10 @@ export function VoiceStyler({
   const [typedPrompt, setTypedPrompt] = useState('')
   const [showTypedInput, setShowTypedInput] = useState(false)
   const [isReplying, setIsReplying] = useState(false)
+  const [isFollowUpListening, setIsFollowUpListening] = useState(false)
   const lastAutoStartRef = useRef(false)
+  const followUpSessionRef = useRef(0)
+  const startListeningRef = useRef<(() => Promise<void>) | null>(null)
 
   const {
     addMessage,
@@ -68,10 +84,35 @@ export function VoiceStyler({
     }
   }, [speak])
 
+  const speakAndMaybeListen = useCallback(async (message?: string | null, reopenMic = false) => {
+    const nextMessage = message?.trim()
+    if (!nextMessage) return
+
+    await speakResponse(nextMessage)
+
+    if (!reopenMic) {
+      setIsFollowUpListening(false)
+      return
+    }
+
+    followUpSessionRef.current += 1
+    const sessionId = followUpSessionRef.current
+    setIsFollowUpListening(true)
+
+    await startListeningRef.current?.()
+
+    if (followUpSessionRef.current !== sessionId) {
+      setIsFollowUpListening(false)
+    }
+  }, [speakResponse])
+
   const runStyleRequest = useCallback(async (text: string, source: 'voice' | 'typed' = 'voice') => {
     if (!text.trim()) {
       return
     }
+
+    followUpSessionRef.current += 1
+    setIsFollowUpListening(false)
 
     setOccasionContext(text)
 
@@ -160,19 +201,20 @@ export function VoiceStyler({
 
             if (event.clarification) {
               if (source === 'voice' && event.text) {
-                void speakResponse(event.text)
+                void speakAndMaybeListen(event.text, true)
               }
               addMessage({ type: 'ai_clarification', content: event.text, clarification: event.clarification })
             } else if (event.text && !event.outfitBoard) {
               if (source === 'voice') {
-                void speakResponse(event.text)
+                void speakAndMaybeListen(event.text, shouldReopenForText(event.text))
               }
               addMessage({ type: 'ai_text', content: event.text })
             }
 
             if (event.outfitBoard) {
               if (source === 'voice') {
-                void speakResponse(getVoiceFollowUp(event.outfitBoard))
+                const followUp = getVoiceFollowUp(event.outfitBoard)
+                void speakAndMaybeListen(followUp.text, followUp.reopenMic)
               }
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
               setCurrentBoard(event.outfitBoard)
@@ -199,17 +241,33 @@ export function VoiceStyler({
         content: error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.",
       })
       if (source === 'voice') {
-        void speakResponse(error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.")
+        void speakAndMaybeListen(error instanceof Error ? error.message : "Sorry, I couldn't process that. Please try again.", false)
       }
     } finally {
       setLoading(false)
     }
-  }, [addMessage, currentBoard, setCurrentBoard, setLoading, setOccasionContext, speak, speakResponse, userProfile])
+  }, [addMessage, currentBoard, setCurrentBoard, setLoading, setOccasionContext, speak, speakAndMaybeListen, userProfile])
 
-  const { voiceState, transcript, isSupported, startListening, stopListening, cancelListening } = useVoiceCapture({
+  const {
+    voiceState,
+    transcript,
+    isSupported,
+    startListening,
+    stopListening,
+    cancelListening,
+  } = useVoiceCapture({
     onTranscript: runStyleRequest,
     continuous: false,
+    idleTimeoutMs: isFollowUpListening ? 4000 : 0,
   })
+
+  startListeningRef.current = startListening
+
+  const beginManualListening = useCallback(async () => {
+    followUpSessionRef.current += 1
+    setIsFollowUpListening(false)
+    await startListening()
+  }, [startListening])
 
   useEffect(() => {
     if (!autoStart) {
@@ -220,14 +278,40 @@ export function VoiceStyler({
     if (lastAutoStartRef.current || !isSupported || voiceState !== 'idle') return
     lastAutoStartRef.current = true
     onAutoStartHandled?.()
-    void startListening()
-  }, [autoStart, isSupported, onAutoStartHandled, startListening, voiceState])
+    void beginManualListening()
+  }, [autoStart, beginManualListening, isSupported, onAutoStartHandled, voiceState])
 
   useEffect(() => {
     if (voiceState === 'listening') {
       stopSpeaking()
     }
   }, [stopSpeaking, voiceState])
+
+  useEffect(() => {
+    if (voiceState !== 'listening') {
+      setIsFollowUpListening(false)
+    }
+  }, [voiceState])
+
+  useEffect(() => {
+    if (!isFollowUpListening || voiceState !== 'listening') return
+
+    const disengage = () => {
+      followUpSessionRef.current += 1
+      setIsFollowUpListening(false)
+      cancelListening()
+    }
+
+    window.addEventListener('pointerdown', disengage, true)
+    window.addEventListener('wheel', disengage, { passive: true })
+    window.addEventListener('scroll', disengage, true)
+
+    return () => {
+      window.removeEventListener('pointerdown', disengage, true)
+      window.removeEventListener('wheel', disengage)
+      window.removeEventListener('scroll', disengage, true)
+    }
+  }, [cancelListening, isFollowUpListening, voiceState])
 
   const submitTypedPrompt = useCallback(() => {
     const text = typedPrompt.trim()
@@ -252,7 +336,13 @@ export function VoiceStyler({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className={`font-semibold tracking-tight text-[var(--text)] ${compact ? 'text-lg' : 'text-xl'}`}>
-            {voiceState === 'listening' ? 'Listening' : isReplying ? 'Replying' : voiceState === 'processing' ? 'Working' : 'Ready'}
+            {voiceState === 'listening'
+              ? isFollowUpListening ? 'Follow-up listening' : 'Listening'
+              : isReplying
+              ? 'Replying'
+              : voiceState === 'processing'
+              ? 'Working'
+              : 'Ready'}
           </h2>
         </div>
         <Sparkles className="h-5 w-5 text-[#E8A94A]" />
@@ -261,7 +351,7 @@ export function VoiceStyler({
       {voiceState === 'idle' && !isReplying && (
         <>
           <button
-            onClick={startListening}
+            onClick={() => void beginManualListening()}
             className={`mt-4 flex w-full items-center justify-between rounded-[24px] border border-white/35 bg-white/60 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm transition-all hover:border-white/55 hover:bg-white/72 ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}
           >
             <div className="flex items-center gap-3">
@@ -336,7 +426,13 @@ export function VoiceStyler({
             <div className={`rounded-[24px] border ${voiceState === 'listening' ? 'border-[#E8A94A]/45 bg-[linear-gradient(135deg,rgba(232,169,74,0.14),rgba(255,255,255,0.68))]' : 'border-white/35 bg-white/68'} backdrop-blur-sm ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">
-                {voiceState === 'listening' ? 'Listening' : isReplying ? 'Replying' : voiceState === 'processing' ? 'Working' : 'Voice issue'}
+                {voiceState === 'listening'
+                  ? isFollowUpListening ? 'Listening for your answer' : 'Listening'
+                  : isReplying
+                  ? 'Replying'
+                  : voiceState === 'processing'
+                  ? 'Working'
+                  : 'Voice issue'}
               </p>
               {voiceState === 'processing' || isReplying ? (
                 <Loader2 className="h-4 w-4 animate-spin text-[#E8A94A]" />
@@ -351,6 +447,8 @@ export function VoiceStyler({
                 ? 'Replying with the next useful step.'
                 : voiceState === 'processing'
                 ? 'Working on the next set of picks.'
+                : isFollowUpListening
+                ? 'I’m live for your answer now. I’ll go quiet again if you do nothing or start browsing.'
                 : 'Pause when you are done and I’ll stop automatically.'}
             </p>
           </div>
