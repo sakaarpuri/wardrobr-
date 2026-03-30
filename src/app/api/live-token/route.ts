@@ -1,3 +1,4 @@
+import { GoogleGenAI, Modality } from '@google/genai'
 import { NextResponse } from 'next/server'
 
 /**
@@ -12,28 +13,41 @@ export async function POST() {
   }
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/ephemeralTokens?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: { apiVersion: 'v1alpha' },
+    })
+
+    const now = Date.now()
+    const token = await ai.authTokens.create({
+      config: {
+        uses: 1,
+        expireTime: new Date(now + 10 * 60 * 1000).toISOString(),
+        newSessionExpireTime: new Date(now + 60 * 1000).toISOString(),
+        liveConnectConstraints: {
           model: 'models/gemini-3.1-flash-live-preview',
           config: {
-            responseModalities: ['AUDIO', 'TEXT'],
+            responseModalities: [Modality.TEXT],
+            inputAudioTranscription: {},
+            temperature: 0.1,
+            systemInstruction:
+              'Transcribe the shopper faithfully in the original language and script. Do not answer the shopper, translate, summarize, or add commentary.',
           },
-        }),
+        },
+        lockAdditionalFields: [
+          'responseModalities',
+          'inputAudioTranscription',
+          'systemInstruction',
+          'temperature',
+        ],
       }
-    )
+    })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Ephemeral token error:', response.status, errorText)
+    if (!token.name) {
       return NextResponse.json({ error: 'Failed to create token' }, { status: 502 })
     }
 
-    const data = await response.json()
-    return NextResponse.json({ token: data.token })
+    return NextResponse.json({ token: token.name })
   } catch (error) {
     console.error('Live token error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

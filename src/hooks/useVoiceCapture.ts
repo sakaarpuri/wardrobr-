@@ -1,5 +1,6 @@
 'use client'
 
+import { GoogleGenAI, Modality } from '@google/genai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type VoiceCaptureState = 'idle' | 'listening' | 'processing' | 'error'
@@ -7,6 +8,8 @@ export type VoiceCaptureState = 'idle' | 'listening' | 'processing' | 'error'
 interface UseVoiceCaptureOptions {
   onTranscript: (transcript: string) => Promise<void> | void
 }
+
+type LiveSession = Awaited<ReturnType<GoogleGenAI['live']['connect']>>
 
 declare global {
   interface Window {
@@ -38,7 +41,7 @@ function writeString(view: DataView, offset: number, value: string) {
   }
 }
 
-function encodeWav(samples: Float32Array, sampleRate: number) {
+function encodeWavBuffer(samples: Float32Array, sampleRate: number) {
   const buffer = new ArrayBuffer(44 + samples.length * 2)
   const view = new DataView(buffer)
 
@@ -57,7 +60,38 @@ function encodeWav(samples: Float32Array, sampleRate: number) {
   view.setUint32(40, samples.length * 2, true)
   floatTo16BitPCM(view, 44, samples)
 
-  return new Blob([view], { type: 'audio/wav' })
+  return buffer
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const chunkSize = 0x8000
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+
+  return window.btoa(binary)
+}
+
+function encodeWav(samples: Float32Array, sampleRate: number) {
+  const buffer = encodeWavBuffer(samples, sampleRate)
+
+  return new Blob([buffer], { type: 'audio/wav' })
+}
+
+function encodeWavForLive(samples: Float32Array, sampleRate: number) {
+  const buffer = encodeWavBuffer(samples, sampleRate)
+
+  return {
+    data: arrayBufferToBase64(buffer),
+    mimeType: 'audio/wav',
+  }
+}
+
+async function wait(ms: number) {
+  await new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
 export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
@@ -74,6 +108,12 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
   const sampleRateRef = useRef(16000)
   const shouldSubmitRef = useRef(true)
   const mountedRef = useRef(true)
+  const liveSessionRef = useRef<LiveSession | null>(null)
+  const liveTranscriptRef = useRef('')
+  const liveTranscriptPromiseRef = useRef<Promise<string> | null>(null)
+  const resolveLiveTranscriptRef = useRef<((value: string) => void) | null>(null)
+  const liveErrorRef = useRef<string | null>(null)
+  const liveReadyRef = useRef(false)
 
   useEffect(() => {
     const AudioContextCtor = window.AudioContext ?? window.webkitAudioContext
@@ -87,9 +127,22 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
 
     return () => {
       mountedRef.current = false
+      liveSessionRef.current?.close()
       void audioContextRef.current?.close()
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop())
     }
+  }, [])
+
+  const resolveLiveTranscript = useCallback((value?: string) => {
+    const resolvedValue = value?.trim() || liveTranscriptRef.current.trim()
+    resolveLiveTranscriptRef.current?.(resolvedValue)
+    resolveLiveTranscriptRef.current = null
+  }, [])
+
+  const closeLiveSession = useCallback(() => {
+    liveSessionRef.current?.close()
+    liveSessionRef.current = null
+    liveReadyRef.current = false
   }, [])
 
   const reset = useCallback(() => {
@@ -97,7 +150,12 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
     setVoiceState('idle')
     setTranscript('')
     chunksRef.current = []
-  }, [])
+    liveTranscriptRef.current = ''
+    liveTranscriptPromiseRef.current = null
+    resolveLiveTranscriptRef.current = null
+    liveErrorRef.current = null
+    closeLiveSession()
+  }, [closeLiveSession])
 
   const transcribeAudio = useCallback(async (blob: Blob) => {
     const formData = new FormData()
@@ -116,6 +174,67 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
     const payload = await response.json()
     return String(payload.transcript ?? '').trim()
   }, [])
+
+  const fetchLiveToken = useCallback(async () => {
+    const response = await fetch('/api/live-token', { method: 'POST' })
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null)
+      throw new Error(payload?.error ?? 'Failed to create live session')
+    }
+
+    const payload = await response.json()
+    const token = String(payload.token ?? '').trim()
+    if (!token) {
+      throw new Error('Failed to create live session')
+    }
+    return token
+  }, [])
+
+  const beginLiveSession = useCallback(async () => {
+    const token = await fetchLiveToken()
+    const ai = new GoogleGenAI({
+      apiKey: token,
+      httpOptions: { apiVersion: 'v1alpha' },
+    })
+
+    liveTranscriptRef.current = ''
+    liveErrorRef.current = null
+    liveTranscriptPromiseRef.current = new Promise<string>((resolve) => {
+      resolveLiveTranscriptRef.current = resolve
+    })
+
+    const session = await ai.live.connect({
+      model: 'models/gemini-3.1-flash-live-preview',
+      config: {
+        responseModalities: [Modality.TEXT],
+        inputAudioTranscription: {},
+        temperature: 0.1,
+      },
+      callbacks: {
+        onmessage: (event) => {
+          const nextTranscript = event.serverContent?.inputTranscription?.text?.trim()
+          if (nextTranscript) {
+            liveTranscriptRef.current = nextTranscript
+          }
+
+          if (event.serverContent?.inputTranscription?.finished) {
+            resolveLiveTranscript(nextTranscript)
+          }
+        },
+        onerror: () => {
+          liveErrorRef.current = 'Live voice capture ran into a problem.'
+          resolveLiveTranscript()
+        },
+        onclose: () => {
+          liveReadyRef.current = false
+        },
+      },
+    })
+
+    liveSessionRef.current = session
+    liveReadyRef.current = true
+  }, [fetchLiveToken, resolveLiveTranscript])
 
   const teardownAudioGraph = useCallback(async () => {
     processorRef.current?.disconnect()
@@ -147,7 +266,27 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
 
     try {
       const blob = encodeWav(merged, sampleRateRef.current)
-      const nextTranscript = await transcribeAudio(blob)
+      let nextTranscript = ''
+
+      if (liveSessionRef.current && liveReadyRef.current) {
+        try {
+          liveSessionRef.current.sendRealtimeInput({ audioStreamEnd: true })
+        } catch {
+          liveErrorRef.current = 'Live voice capture ran into a problem.'
+        }
+
+        nextTranscript = (
+          await Promise.race([
+            liveTranscriptPromiseRef.current ?? Promise.resolve(''),
+            wait(2200).then(() => liveTranscriptRef.current.trim()),
+          ])
+        ).trim()
+      }
+
+      if (!nextTranscript) {
+        nextTranscript = await transcribeAudio(blob)
+      }
+
       if (!nextTranscript) {
         throw new Error('I could not hear enough to transcribe that. Please try again.')
       }
@@ -160,8 +299,9 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
       if (!mountedRef.current) return
       setVoiceState('error')
       setTranscript(error instanceof Error ? error.message : 'Voice transcription failed')
+      closeLiveSession()
     }
-  }, [onTranscript, reset, teardownAudioGraph, transcribeAudio])
+  }, [closeLiveSession, onTranscript, reset, teardownAudioGraph, transcribeAudio])
 
   const startListening = useCallback(async () => {
     const AudioContextCtor = window.AudioContext ?? window.webkitAudioContext
@@ -190,9 +330,29 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
       setTranscript('')
       setVoiceState('listening')
 
+      try {
+        await beginLiveSession()
+      } catch {
+        closeLiveSession()
+      }
+
       processor.onaudioprocess = (event) => {
         const input = event.inputBuffer.getChannelData(0)
-        chunksRef.current.push(new Float32Array(input))
+        const chunk = new Float32Array(input)
+        chunksRef.current.push(chunk)
+
+        if (!liveSessionRef.current || !liveReadyRef.current) {
+          return
+        }
+
+        try {
+          liveSessionRef.current.sendRealtimeInput({
+            audio: encodeWavForLive(chunk, sampleRateRef.current),
+          })
+        } catch {
+          liveErrorRef.current = 'Live voice capture ran into a problem.'
+          closeLiveSession()
+        }
       }
 
       source.connect(processor)
@@ -200,8 +360,10 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
       gain.connect(audioContext.destination)
     } catch {
       setVoiceState('error')
+      setTranscript('Microphone access is needed for voice styling.')
+      closeLiveSession()
     }
-  }, [])
+  }, [beginLiveSession, closeLiveSession])
 
   const stopListening = useCallback(() => {
     if (voiceState !== 'listening') return
@@ -210,9 +372,11 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
 
   const cancelListening = useCallback(() => {
     shouldSubmitRef.current = false
+    resolveLiveTranscript()
+    closeLiveSession()
     void teardownAudioGraph()
     reset()
-  }, [reset, teardownAudioGraph])
+  }, [closeLiveSession, reset, resolveLiveTranscript, teardownAudioGraph])
 
   return {
     voiceState,

@@ -147,7 +147,7 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
                 {isListening
                   ? 'Speak naturally in any language, then tap again to finish.'
                   : isProcessing
-                  ? 'Gemini is transcribing the clip before we start shopping.'
+                  ? 'Got it. I am turning that into your shopping brief now.'
                   : 'Say the trip, event, vibe, or one item you need. The mic is the main way in.'}
               </p>
             </div>
@@ -171,7 +171,11 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
               )}
             </div>
             <p className="mt-2 text-[14px] leading-relaxed text-[var(--text-muted)]">
-              {transcript || (hasVoiceError ? 'We could not transcribe that clip cleanly. Try again with a short clear brief.' : 'You can speak in the language that feels natural to you.')}
+              {hasVoiceError
+                ? (transcript || 'We could not catch that clearly. Try one short brief and we will take it from there.')
+                : isListening
+                ? 'Say the trip, event, vibe, or item you want help with.'
+                : 'Turning your voice into the first shopping pass.'}
             </p>
           </div>
         )}

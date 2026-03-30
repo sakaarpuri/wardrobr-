@@ -263,10 +263,10 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
 
       {voiceState !== 'idle' && (
         <div className="mt-4 space-y-4">
-          <div className={`rounded-[24px] border border-white/35 bg-white/68 backdrop-blur-sm ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}>
+            <div className={`rounded-[24px] border border-white/35 bg-white/68 backdrop-blur-sm ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">
-                {voiceState === 'listening' ? 'Recording now...' : voiceState === 'processing' ? 'Transcribing...' : 'Voice issue'}
+                {voiceState === 'listening' ? 'Recording now...' : voiceState === 'processing' ? 'Updating your picks...' : 'Voice issue'}
               </p>
               {voiceState === 'processing' ? (
                 <Loader2 className="h-4 w-4 animate-spin text-[#E8A94A]" />
@@ -275,7 +275,11 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
               )}
             </div>
             <p className="mt-3 min-h-[40px] text-sm leading-relaxed text-[var(--text-muted)]">
-              {transcript || (voiceState === 'processing' ? 'Gemini is transcribing the clip before updating the picks…' : 'You can speak naturally in the language you use every day.')}
+              {voiceState === 'error'
+                ? (transcript || 'We could not catch that clearly. Try one short voice tweak.')
+                : voiceState === 'processing'
+                ? 'Got it. I am working that into the board now.'
+                : 'Say the change naturally and I will fold it into the picks.'}
             </p>
           </div>
 
