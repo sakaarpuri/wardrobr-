@@ -363,6 +363,43 @@ function CapabilityStrip() {
   )
 }
 
+function MemberMemoryCard() {
+  return (
+    <section className="px-6 pb-12">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-[rgba(82,126,255,0.16)] bg-[linear-gradient(145deg,rgba(82,126,255,0.12),rgba(255,255,255,0.92),rgba(232,169,74,0.10))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-7">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)] lg:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/65 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-faint)]">
+              <Sparkles className="h-3.5 w-3.5 text-[#E8A94A]" />
+              AI taste memory
+            </div>
+            <h2 className="mt-4 max-w-2xl text-2xl font-semibold tracking-tight text-[var(--text)] sm:text-3xl">
+              The shopping agent learns your taste as you use it over time.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)] sm:text-base">
+              Signed-in members keep a cleaner memory of the brands, price tiers, silhouettes, and boards they actually respond to, so the next set of picks starts closer to their taste.
+            </p>
+          </div>
+
+          <div className="rounded-[24px] border border-white/55 bg-white/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+            <div className="space-y-3">
+              {[
+                'Learns from shop clicks, saves, swaps, and open-all-tabs',
+                'Biases future results gently instead of boxing you in',
+                'Keeps member memory separate from guest sessions',
+              ].map((item) => (
+                <div key={item} className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)]/80 px-4 py-3 text-sm leading-relaxed text-[var(--text-muted)]">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function HomePage() {
   const router = useRouter()
   const { setPendingMessage, setPendingVoiceStart, clearChat, setOccasionContext } = useChatStore()
@@ -451,6 +488,7 @@ export default function HomePage() {
       <ProofBoard />
       <OccasionTicker onSubmit={handleSubmit} />
       <CapabilityStrip />
+      <MemberMemoryCard />
 
       <div className="border-t border-[var(--border)] px-6 py-3 text-center">
         <p className="mx-auto max-w-xl text-xs leading-relaxed text-[var(--text-faint)]">
