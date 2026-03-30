@@ -4,7 +4,7 @@ import { getGeminiModel } from '@/lib/gemini'
 import { SearchProviderUnavailableError, searchProducts, rewriteAffiliateUrl } from '@/lib/affiliate'
 import { routeRequest } from '@/lib/gemini-router'
 import { ClarificationGroup, ClarificationPrompt, Product, OutfitBoard } from '@/lib/types'
-import { UserProfile, buildProfileContext, getBudgetCap, getBudgetLabel, getBudgetStatus, getSearchPriceCap, inferProfileFromReply, isLikelyShoppingRelevant, isUnsupportedShopperSegment, normaliseUserProfile } from '@/lib/shopper'
+import { UserProfile, buildProfileContext, extractSpecificItemCategories, getBudgetCap, getBudgetLabel, getBudgetStatus, getSearchPriceCap, inferProfileFromReply, isLikelyShoppingRelevant, isSingleSpecificItemRequest, isUnsupportedShopperSegment, normaliseUserProfile } from '@/lib/shopper'
 import { buildMemberMemoryContext, getMemberMemorySnapshot } from '@/lib/member-memory'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
@@ -392,7 +392,7 @@ function getClarificationPrompt(
   const text = message.trim().toLowerCase()
   const wordCount = text.split(/\s+/).filter(Boolean).length
   const hasOccasion = /(wedding|interview|job|office|party|date|holiday|trip|brunch|festival|graduation|work|weekend|ceremony)/.test(text)
-  const hasCategory = /(dress|blazer|jacket|coat|trousers|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit)/.test(text)
+  const hasCategory = extractSpecificItemCategories(text).length > 0
 
   if (!profile.mission && wordCount <= 6 && !hasCategory && intentType !== 'product_search') {
     if (!hasOccasion || wordCount <= 3) {
@@ -415,7 +415,7 @@ function getGenderClarificationPrompt(
 
   const text = message.trim().toLowerCase()
   const hasShoppingCue = /(outfit|look|capsule|wardrobe|wedding|interview|date|party|holiday|trip|travel|brunch|formal|dressy|casual|occasion|what should i wear|what to wear)/.test(text)
-  const hasSpecificItem = /(dress|skirt|heels|bra|blazer|jacket|coat|trousers|pants|jeans|shirt|suit|loafers|trainers|sneakers|sandals|bag|top|blouse|shorts)/.test(text)
+  const hasSpecificItem = extractSpecificItemCategories(text).length > 0
   const clearlyWomens = /\b(dress|skirt|heels|bra|bralette|maternity|bridal)\b/.test(text)
   const clearlyMens = /\b(suit|tie|tuxedo|brogues|groom suit|best man)\b/.test(text)
   const explicitlyUnisex = /\bunisex\b/.test(text)
@@ -423,8 +423,11 @@ function getGenderClarificationPrompt(
   if (explicitlyUnisex || clearlyWomens || clearlyMens) return null
 
   const shouldAsk =
-    hasShoppingCue ||
-    (!hasSpecificItem && /(job|office|wedding|party|holiday|trip|travel|interview|date|brunch|gala|ceremony|event)/.test(text))
+    !hasSpecificItem &&
+    (
+      hasShoppingCue ||
+      /(job|office|wedding|party|holiday|trip|travel|interview|date|brunch|gala|ceremony|event)/.test(text)
+    )
 
   if (!shouldAsk) return null
 
@@ -452,6 +455,7 @@ function getTravelClarificationPrompt(
   const timing = timingMatch?.[1]?.toLowerCase() ?? null
   const warmDestination = /(las palmas|la palma|gran canaria|tenerife|mallorca|majorca|ibiza|canary islands|barcelona|lisbon|amalfi|mykonos|athens|nice|miami|dubai)/.test(text)
   const alreadyHasMixedTrip = /\bboth\b|\bmixed\b|\ba mix\b|daytime and dinner|day and dinner|daytime \+ dinner|day and night|beach and dinner/.test(text)
+  const specificItemRequest = isSingleSpecificItemRequest(text)
   const groups: ClarificationGroup[] = []
 
   if (!profile.tripPreference && !alreadyHasMixedTrip) {
@@ -481,7 +485,7 @@ function getTravelClarificationPrompt(
     })
   }
 
-  if (!profile.mission) {
+  if (!profile.mission && !specificItemRequest) {
     groups.push(buildMissionClarificationGroup())
   }
 
@@ -494,7 +498,7 @@ function getTravelClarificationPrompt(
       ? `Heading to ${toTitleCase(destination)}${timing ? ` ${timing}` : ''}, I’d start with a warm-weather travel capsule.`
       : `Heading to ${toTitleCase(destination)}${timing ? ` ${timing}` : ''}, I’d start with a travel capsule.`
     return {
-      question: `${lead} Pick the trip mix${!profile.mission ? ' and whether you want a full look or one hero piece' : ''}.`,
+      question: `${lead} Pick the trip mix${!profile.mission && !specificItemRequest ? ' and whether you want a full look or one hero piece' : ''}.`,
       groups,
       ctaLabel: 'Show my picks',
     }
@@ -502,14 +506,14 @@ function getTravelClarificationPrompt(
 
   if (warmDestination) {
     return {
-      question: `I’d start with a warm-weather travel capsule. Pick the trip mix${!profile.mission ? ' and whether you want a full look or one hero piece' : ''}.`,
+      question: `I’d start with a warm-weather travel capsule. Pick the trip mix${!profile.mission && !specificItemRequest ? ' and whether you want a full look or one hero piece' : ''}.`,
       groups,
       ctaLabel: 'Show my picks',
     }
   }
 
   return {
-    question: `I’d start with a travel capsule for the trip. Pick the trip mix${!profile.mission ? ' and whether you want a full look or one hero piece' : ''}.`,
+    question: `I’d start with a travel capsule for the trip. Pick the trip mix${!profile.mission && !specificItemRequest ? ' and whether you want a full look or one hero piece' : ''}.`,
     groups,
     ctaLabel: 'Show my picks',
   }
@@ -638,7 +642,7 @@ function extractColours(text: string): string[] {
 }
 
 function extractCategories(text: string): string[] {
-  const categories = ['blazer', 'jacket', 'coat', 'trousers', 'jeans', 'skirt', 'dress', 'top', 'shirt', 'blouse', 'shoes', 'boots', 'sneakers', 'bag', 'accessories']
+  const categories = ['blazer', 'jacket', 'coat', 'trousers', 'jeans', 'skirt', 'dress', 'top', 'shirt', 'blouse', 'shoes', 'boots', 'sneakers', 'trainers', 'heels', 'sandals', 'bag', 'accessories']
   return categories.filter(c => text.toLowerCase().includes(c))
 }
 

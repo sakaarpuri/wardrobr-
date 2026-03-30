@@ -30,6 +30,37 @@ export const MENS_SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '30', '32', 
 export const UNIVERSAL_SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL'] as const
 export const SHOPPING_FOR_OPTIONS = ['Women', 'Men'] as const
 
+const SPECIFIC_ITEM_PATTERNS = [
+  'dress',
+  'blazer',
+  'jacket',
+  'coat',
+  'trousers',
+  'pants',
+  'jeans',
+  'shirt',
+  'top',
+  'blouse',
+  'skirt',
+  'shorts',
+  'heels',
+  'sandals',
+  'loafers',
+  'trainers',
+  'sneakers',
+  'shoes',
+  'boots',
+  'bag',
+  'handbag',
+  'clutch',
+  'tote',
+  'belt',
+  'scarf',
+  'earrings',
+  'necklace',
+  'suit',
+] as const
+
 export const MISSION_OPTIONS: Array<{
   value: ShopperMission
   label: string
@@ -166,7 +197,9 @@ export function inferProfileFromReply(
   const assistant = lastAssistantText?.trim().toLowerCase() ?? ''
   const next: Partial<UserProfile> = {}
   const hasOccasion = /(wedding|interview|job|office|party|date|holiday|trip|travel|brunch|festival|graduation|work|weekend|ceremony|gala|conference)/.test(text)
-  const hasCategory = /(dress|blazer|jacket|coat|trousers|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit|blouse|shorts)/.test(text)
+  const itemCategories = extractSpecificItemCategories(text)
+  const hasCategory = itemCategories.length > 0
+  const hasSpecificItemRequest = itemCategories.length === 1
   const mentionsMens = /\b(men|men's|mens|male|groom|husband|boyfriend|dad|father|brother|son)\b/.test(text)
   const mentionsWomens = /\b(women|women's|womens|woman|female|plus-size|curve|maternity|wife|girlfriend|mum|mom|mother|sister|bride)\b/.test(text)
   const stronglyMensCategory = /\b(suit|tie|tuxedo|oxford shirt|brogues|groom suit|best man)\b/.test(text)
@@ -183,6 +216,8 @@ export function inferProfileFromReply(
       next.mission = 'hero_piece'
     } else if (/(style what i own|style something i own|style what i have)/.test(text)) {
       next.mission = 'style_existing'
+    } else if (hasSpecificItemRequest) {
+      next.mission = 'hero_piece'
     } else if (hasOccasion && !hasCategory) {
       next.mission = 'full_look'
     }
@@ -245,6 +280,24 @@ export function isUnsupportedShopperSegment(message: string) {
 export function isLikelyShoppingRelevant(message: string) {
   const text = message.trim().toLowerCase()
   return /(outfit|look|style|wear|shopping|shop|buy|bought|dress|blazer|jacket|coat|trousers|pants|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit|blouse|shorts|wardrobe|capsule|wedding|interview|date|brunch|trip|travel|holiday|occasion|formal|casual|dressy|budget|size|fit)/.test(text)
+}
+
+export function extractSpecificItemCategories(message: string) {
+  const text = message.trim().toLowerCase()
+  const matches = SPECIFIC_ITEM_PATTERNS.filter((pattern) => {
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`\\b${escaped}\\b`).test(text)
+  })
+
+  return [...new Set(matches)]
+}
+
+export function hasSpecificItemRequest(message: string) {
+  return extractSpecificItemCategories(message).length > 0
+}
+
+export function isSingleSpecificItemRequest(message: string) {
+  return extractSpecificItemCategories(message).length === 1
 }
 
 export function isLikelyClarificationReply(
