@@ -57,11 +57,11 @@ export interface ClarificationOption {
   id: string
   label: string
   helper?: string
-  profilePatch?: Partial<Pick<UserProfile, 'mission' | 'tripPreference'>>
+  profilePatch?: Partial<Pick<UserProfile, 'mission' | 'tripPreference' | 'gender'>>
 }
 
 export interface ClarificationGroup {
-  id: 'mission' | 'trip_preference'
+  id: 'mission' | 'trip_preference' | 'gender'
   label: string
   options: ClarificationOption[]
   selectedOptionId?: string

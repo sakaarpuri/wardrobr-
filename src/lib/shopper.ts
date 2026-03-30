@@ -167,8 +167,10 @@ export function inferProfileFromReply(
   const next: Partial<UserProfile> = {}
   const hasOccasion = /(wedding|interview|job|office|party|date|holiday|trip|travel|brunch|festival|graduation|work|weekend|ceremony|gala|conference)/.test(text)
   const hasCategory = /(dress|blazer|jacket|coat|trousers|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit|blouse|shorts)/.test(text)
-  const mentionsMens = /\b(men|men's|mens|male|groom)\b/.test(text)
-  const mentionsWomens = /\b(women|women's|womens|woman|female|plus-size|curve|maternity)\b/.test(text)
+  const mentionsMens = /\b(men|men's|mens|male|groom|husband|boyfriend|dad|father|brother|son)\b/.test(text)
+  const mentionsWomens = /\b(women|women's|womens|woman|female|plus-size|curve|maternity|wife|girlfriend|mum|mom|mother|sister|bride)\b/.test(text)
+  const stronglyMensCategory = /\b(suit|tie|tuxedo|oxford shirt|brogues|groom suit|best man)\b/.test(text)
+  const stronglyWomensCategory = /\b(dress|heels|heel|skirt|bra|bralette|maternity|bridal|wedding guest dress)\b/.test(text)
 
   if (!text) return next
 
@@ -203,6 +205,10 @@ export function inferProfileFromReply(
       next.gender = 'men'
     } else if (mentionsWomens) {
       next.gender = 'women'
+    } else if (stronglyMensCategory) {
+      next.gender = 'men'
+    } else if (stronglyWomensCategory) {
+      next.gender = 'women'
     } else if (/\bwedding guest\b/.test(text) && !mentionsMens) {
       next.gender = 'women'
     }
@@ -229,6 +235,16 @@ export function inferProfileFromReply(
   }
 
   return next
+}
+
+export function isUnsupportedShopperSegment(message: string) {
+  const text = message.trim().toLowerCase()
+  return /\b(kids|kid|child|children|toddler|toddlers|baby|babies|newborn|school uniform)\b/.test(text)
+}
+
+export function isLikelyShoppingRelevant(message: string) {
+  const text = message.trim().toLowerCase()
+  return /(outfit|look|style|wear|shopping|shop|buy|bought|dress|blazer|jacket|coat|trousers|pants|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit|blouse|shorts|wardrobe|capsule|wedding|interview|date|brunch|trip|travel|holiday|occasion|formal|casual|dressy|budget|size|fit)/.test(text)
 }
 
 export function isLikelyClarificationReply(

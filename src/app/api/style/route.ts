@@ -4,7 +4,7 @@ import { getGeminiModel } from '@/lib/gemini'
 import { SearchProviderUnavailableError, searchProducts, rewriteAffiliateUrl } from '@/lib/affiliate'
 import { routeRequest } from '@/lib/gemini-router'
 import { ClarificationGroup, ClarificationPrompt, Product, OutfitBoard } from '@/lib/types'
-import { UserProfile, buildProfileContext, getBudgetCap, getBudgetLabel, getBudgetStatus, getSearchPriceCap, inferProfileFromReply, normaliseUserProfile } from '@/lib/shopper'
+import { UserProfile, buildProfileContext, getBudgetCap, getBudgetLabel, getBudgetStatus, getSearchPriceCap, inferProfileFromReply, isLikelyShoppingRelevant, isUnsupportedShopperSegment, normaliseUserProfile } from '@/lib/shopper'
 import crypto from 'crypto'
 
 // Allow up to 60s on Vercel (Pro) — Gemini agentic loop can take 15-25s
@@ -138,7 +138,23 @@ export async function POST(req: NextRequest) {
       try {
         emit({ type: 'status', text: 'Reading your style request…' })
 
-        const clarificationPrompt = getClarificationPrompt(message, profile, Boolean(imageBase64))
+        const route = imageBase64
+          ? await routeRequest({ userInput: message, imageBase64, imageMimeType })
+          : await routeRequest({ userInput: message })
+
+        const scopeMessage = getScopeGuardMessage(message, route.intentType, Boolean(imageBase64))
+        if (scopeMessage) {
+          emit({ type: 'result', text: scopeMessage, hasBoard: false })
+          return
+        }
+
+        const unsupportedMessage = getUnsupportedShopperMessage(message)
+        if (unsupportedMessage) {
+          emit({ type: 'result', text: unsupportedMessage, hasBoard: false })
+          return
+        }
+
+        const clarificationPrompt = getClarificationPrompt(message, profile, Boolean(imageBase64), route.intentType)
         if (clarificationPrompt) {
           emit({ type: 'result', text: clarificationPrompt.question, clarification: clarificationPrompt, hasBoard: false })
           return
@@ -158,10 +174,6 @@ export async function POST(req: NextRequest) {
 
         // Only run Flash-Lite classification when there's an image — text-only
         // doesn't benefit from the pre-call and it adds ~500 ms of latency.
-        const route = imageBase64
-          ? await routeRequest({ userInput: message, imageBase64, imageMimeType })
-          : { intentType: 'outfit_request' as const, imageContextHint: undefined }
-
         const productCache = new Map<string, Product>()
         const model = getGeminiModel()
         const chat = model.startChat({ history: safeHistory })
@@ -352,9 +364,13 @@ function applyShopperConstraints(
 function getClarificationPrompt(
   message: string | undefined,
   profile: UserProfile,
-  hasImage: boolean
+  hasImage: boolean,
+  intentType?: string
 ): ClarificationPrompt | null {
   if (hasImage || !message) return null
+
+  const genderPrompt = getGenderClarificationPrompt(message, profile)
+  if (genderPrompt) return genderPrompt
 
   const travelPrompt = getTravelClarificationPrompt(message, profile)
   if (travelPrompt) return travelPrompt
@@ -364,7 +380,7 @@ function getClarificationPrompt(
   const hasOccasion = /(wedding|interview|job|office|party|date|holiday|trip|brunch|festival|graduation|work|weekend|ceremony)/.test(text)
   const hasCategory = /(dress|blazer|jacket|coat|trousers|jeans|shoes|heels|sandals|bag|top|shirt|skirt|loafers|trainers|sneakers|suit)/.test(text)
 
-  if (!profile.mission && wordCount <= 6 && !hasCategory) {
+  if (!profile.mission && wordCount <= 6 && !hasCategory && intentType !== 'product_search') {
     if (!hasOccasion || wordCount <= 3) {
       return {
         question: 'Pick the route and I’ll shop it.',
@@ -375,6 +391,34 @@ function getClarificationPrompt(
   }
 
   return null
+}
+
+function getGenderClarificationPrompt(
+  message: string,
+  profile: UserProfile
+): ClarificationPrompt | null {
+  if (profile.gender) return null
+
+  const text = message.trim().toLowerCase()
+  const hasShoppingCue = /(outfit|look|capsule|wardrobe|wedding|interview|date|party|holiday|trip|travel|brunch|formal|dressy|casual|occasion|what should i wear|what to wear)/.test(text)
+  const hasSpecificItem = /(dress|skirt|heels|bra|blazer|jacket|coat|trousers|pants|jeans|shirt|suit|loafers|trainers|sneakers|sandals|bag|top|blouse|shorts)/.test(text)
+  const clearlyWomens = /\b(dress|skirt|heels|bra|bralette|maternity|bridal)\b/.test(text)
+  const clearlyMens = /\b(suit|tie|tuxedo|brogues|groom suit|best man)\b/.test(text)
+  const explicitlyUnisex = /\bunisex\b/.test(text)
+
+  if (explicitlyUnisex || clearlyWomens || clearlyMens) return null
+
+  const shouldAsk =
+    hasShoppingCue ||
+    (!hasSpecificItem && /(job|office|wedding|party|holiday|trip|travel|interview|date|brunch|gala|ceremony|event)/.test(text))
+
+  if (!shouldAsk) return null
+
+  return {
+    question: 'One quick thing before I shop it: are we shopping for women or men?',
+    groups: [buildGenderClarificationGroup()],
+    ctaLabel: 'Show my picks',
+  }
 }
 
 function getTravelClarificationPrompt(
@@ -484,6 +528,47 @@ function buildMissionClarificationGroup(): ClarificationGroup {
       },
     ],
   }
+}
+
+function buildGenderClarificationGroup(): ClarificationGroup {
+  return {
+    id: 'gender',
+    label: 'Shopping for',
+    options: [
+      {
+        id: 'women',
+        label: 'Women',
+        helper: 'Shop women’s results.',
+        profilePatch: { gender: 'women' },
+      },
+      {
+        id: 'men',
+        label: 'Men',
+        helper: 'Shop men’s results.',
+        profilePatch: { gender: 'men' },
+      },
+    ],
+  }
+}
+
+function getUnsupportedShopperMessage(message: string | undefined) {
+  if (!message) return null
+  if (isUnsupportedShopperSegment(message)) {
+    return 'I can shop women’s and men’s clothes right now. Tell me the adult brief and I’ll take it from there.'
+  }
+  return null
+}
+
+function getScopeGuardMessage(
+  message: string | undefined,
+  intentType: string,
+  hasImage: boolean
+) {
+  if (hasImage || !message) return null
+  if (intentType !== 'general_chat') return null
+  if (isLikelyShoppingRelevant(message)) return null
+
+  return 'I can help with clothes shopping only. Tell me the item, occasion, budget, size, or upload a look to shop.'
 }
 
 function buildBoardWarnings(
