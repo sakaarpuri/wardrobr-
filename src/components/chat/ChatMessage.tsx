@@ -52,7 +52,7 @@ export function ChatMessage({ message, onClarificationSelect }: ChatMessageProps
               transition={{ duration: 0.25 }}
               className="font-display italic text-[var(--text-muted)] text-sm"
             >
-              {message.content ?? 'Styling your look…'}
+              {message.content ?? 'Working on it…'}
             </motion.p>
           </AnimatePresence>
         </div>

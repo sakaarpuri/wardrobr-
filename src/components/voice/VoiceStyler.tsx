@@ -26,7 +26,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
     setOccasionContext(text)
 
     addMessage({ type: 'user_text', content: text })
-    const loadingMsg = addMessage({ type: 'system_loading', content: 'Styling your look…' })
+    const loadingMsg = addMessage({ type: 'system_loading', content: 'I got it. Working on it…' })
     setLoading(true)
 
     let productStreamId: string | null = null
@@ -135,6 +135,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
 
   const { voiceState, transcript, isSupported, startListening, stopListening, cancelListening } = useVoiceCapture({
     onTranscript: runStyleRequest,
+    continuous: true,
   })
 
   const submitTypedPrompt = useCallback(() => {
@@ -163,7 +164,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
             Voice follow-up
           </p>
           <h2 className={`mt-2 font-semibold tracking-tight text-[var(--text)] ${compact ? 'text-lg' : 'text-xl'}`}>
-            Refine by voice
+            Keep talking
           </h2>
         </div>
         <Sparkles className="h-5 w-5 text-[#E8A94A]" />
@@ -172,7 +173,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
       {voiceState === 'idle' && (
         <>
           <p className={`mt-3 leading-relaxed text-[var(--text-muted)] ${compact ? 'text-[13px]' : 'text-sm'}`}>
-            Record a short tweak in the language that feels natural to you, like cheaper, dressier, or more casual.
+            Keep talking naturally to adjust the picks, like cheaper, dressier, or more casual.
           </p>
           <button
             onClick={startListening}
@@ -183,13 +184,13 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
                 <Mic className="h-5 w-5 text-[var(--text)]" />
               </div>
               <div>
-                <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>Record a voice tweak</p>
+                <p className={`font-semibold text-[var(--text)] ${compact ? 'text-[15px]' : 'text-sm'}`}>Keep talking to Wardrobr</p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
-                  Tap to start, speak naturally, then tap again to finish.
+                  Tap once, speak naturally, and I will jump in when you pause.
                 </p>
               </div>
             </div>
-            <ArrowIndicator label="Tap to record" />
+            <ArrowIndicator label="Tap to talk" />
           </button>
 
           {!compact && (
@@ -266,7 +267,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
             <div className={`rounded-[24px] border border-white/35 bg-white/68 backdrop-blur-sm ${compact ? 'px-3.5 py-3.5' : 'px-4 py-4'}`}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">
-                {voiceState === 'listening' ? 'Recording now...' : voiceState === 'processing' ? 'Updating your picks...' : 'Voice issue'}
+                {voiceState === 'listening' ? 'Listening...' : voiceState === 'processing' ? 'Working on it...' : 'Voice issue'}
               </p>
               {voiceState === 'processing' ? (
                 <Loader2 className="h-4 w-4 animate-spin text-[#E8A94A]" />
@@ -278,8 +279,8 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
               {voiceState === 'error'
                 ? (transcript || 'We could not catch that clearly. Try one short voice tweak.')
                 : voiceState === 'processing'
-                ? 'Got it. I am working that into the board now.'
-                : 'Say the change naturally and I will fold it into the picks.'}
+                ? 'I got it. I am working that into the picks now.'
+                : 'Speak naturally. I will jump in once you pause.'}
             </p>
           </div>
 
@@ -308,7 +309,7 @@ export function VoiceStyler({ compact = false }: { compact?: boolean }) {
               ) : (
                 <>
                   <Mic className="h-4 w-4" />
-                  Finish recording
+                  Done now
                 </>
               )}
             </button>

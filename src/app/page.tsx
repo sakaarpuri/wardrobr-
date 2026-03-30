@@ -141,13 +141,13 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
             </div>
             <div>
               <p className="text-2xl font-semibold tracking-tight text-[var(--text)]">
-                {isListening ? 'Recording now...' : isProcessing ? 'Turning your voice into a brief...' : 'Tap to talk to your stylist'}
+                {isListening ? 'Listening...' : isProcessing ? 'I got it. Working on it...' : 'Tap to talk to your stylist'}
               </p>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
                 {isListening
-                  ? 'Speak naturally in any language, then tap again to finish.'
+                  ? 'Speak naturally in any language. I will jump in when you pause.'
                   : isProcessing
-                  ? 'Got it. I am turning that into your shopping brief now.'
+                  ? 'Turning that into your first shopping pass now.'
                   : 'Say the trip, event, vibe, or one item you need. The mic is the main way in.'}
               </p>
             </div>
@@ -158,7 +158,7 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
           <div className="rounded-[22px] border border-[var(--border)] bg-white/70 px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-sm">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">
-                {isListening ? 'Tap again when you are done' : isProcessing ? 'Transcribing now' : 'Voice issue'}
+                {isListening ? 'Listening now' : isProcessing ? 'Working on it' : 'Voice issue'}
               </p>
               {isListening && (
                 <button
@@ -174,8 +174,8 @@ function HomeHero({ onSubmit }: { onSubmit: (message: string, imageBase64?: stri
               {hasVoiceError
                 ? (transcript || 'We could not catch that clearly. Try one short brief and we will take it from there.')
                 : isListening
-                ? 'Say the trip, event, vibe, or item you want help with.'
-                : 'Turning your voice into the first shopping pass.'}
+                ? 'Say the trip, event, vibe, or item you want help with. I will stop on the pause.'
+                : 'I heard you. Pulling together the first results now.'}
             </p>
           </div>
         )}

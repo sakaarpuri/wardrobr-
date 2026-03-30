@@ -7,6 +7,7 @@ export type VoiceCaptureState = 'idle' | 'listening' | 'processing' | 'error'
 
 interface UseVoiceCaptureOptions {
   onTranscript: (transcript: string) => Promise<void> | void
+  continuous?: boolean
 }
 
 type LiveSession = Awaited<ReturnType<GoogleGenAI['live']['connect']>>
@@ -94,7 +95,7 @@ async function wait(ms: number) {
   await new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
-export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
+export function useVoiceCapture({ onTranscript, continuous = false }: UseVoiceCaptureOptions) {
   const [voiceState, setVoiceState] = useState<VoiceCaptureState>('idle')
   const [transcript, setTranscript] = useState('')
   const [isSupported, setIsSupported] = useState(true)
@@ -114,6 +115,9 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
   const resolveLiveTranscriptRef = useRef<((value: string) => void) | null>(null)
   const liveErrorRef = useRef<string | null>(null)
   const liveReadyRef = useRef(false)
+  const autoStopTimeoutRef = useRef<number | null>(null)
+  const hasHeardSpeechRef = useRef(false)
+  const restartListeningRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     const AudioContextCtor = window.AudioContext ?? window.webkitAudioContext
@@ -145,17 +149,26 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
     liveReadyRef.current = false
   }, [])
 
+  const clearAutoStopTimeout = useCallback(() => {
+    if (autoStopTimeoutRef.current !== null) {
+      window.clearTimeout(autoStopTimeoutRef.current)
+      autoStopTimeoutRef.current = null
+    }
+  }, [])
+
   const reset = useCallback(() => {
     if (!mountedRef.current) return
     setVoiceState('idle')
     setTranscript('')
     chunksRef.current = []
+    hasHeardSpeechRef.current = false
     liveTranscriptRef.current = ''
     liveTranscriptPromiseRef.current = null
     resolveLiveTranscriptRef.current = null
     liveErrorRef.current = null
+    clearAutoStopTimeout()
     closeLiveSession()
-  }, [closeLiveSession])
+  }, [clearAutoStopTimeout, closeLiveSession])
 
   const transcribeAudio = useCallback(async (blob: Blob) => {
     const formData = new FormData()
@@ -237,6 +250,7 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
   }, [fetchLiveToken, resolveLiveTranscript])
 
   const teardownAudioGraph = useCallback(async () => {
+    clearAutoStopTimeout()
     processorRef.current?.disconnect()
     sourceRef.current?.disconnect()
     gainRef.current?.disconnect()
@@ -249,11 +263,12 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
       await audioContextRef.current.close()
       audioContextRef.current = null
     }
-  }, [])
+  }, [clearAutoStopTimeout])
 
   const handleStop = useCallback(async () => {
     const merged = mergeBuffers(chunksRef.current)
     chunksRef.current = []
+    clearAutoStopTimeout()
     await teardownAudioGraph()
 
     if (!shouldSubmitRef.current || merged.length === 0) {
@@ -294,6 +309,16 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
       if (!mountedRef.current) return
       setTranscript(nextTranscript)
       await onTranscript(nextTranscript)
+
+      if (continuous && shouldSubmitRef.current && mountedRef.current) {
+        reset()
+        await wait(220)
+        if (mountedRef.current) {
+          restartListeningRef.current?.()
+        }
+        return
+      }
+
       reset()
     } catch (error) {
       if (!mountedRef.current) return
@@ -301,7 +326,7 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
       setTranscript(error instanceof Error ? error.message : 'Voice transcription failed')
       closeLiveSession()
     }
-  }, [closeLiveSession, onTranscript, reset, teardownAudioGraph, transcribeAudio])
+  }, [clearAutoStopTimeout, closeLiveSession, continuous, onTranscript, reset, teardownAudioGraph, transcribeAudio])
 
   const startListening = useCallback(async () => {
     const AudioContextCtor = window.AudioContext ?? window.webkitAudioContext
@@ -326,6 +351,7 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
       gainRef.current = gain
       chunksRef.current = []
       shouldSubmitRef.current = true
+      hasHeardSpeechRef.current = false
       sampleRateRef.current = audioContext.sampleRate
       setTranscript('')
       setVoiceState('listening')
@@ -340,6 +366,23 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
         const input = event.inputBuffer.getChannelData(0)
         const chunk = new Float32Array(input)
         chunksRef.current.push(chunk)
+
+        let energy = 0
+        for (let i = 0; i < chunk.length; i += 1) {
+          energy += chunk[i] * chunk[i]
+        }
+        const rms = Math.sqrt(energy / chunk.length)
+
+        if (rms > 0.018) {
+          hasHeardSpeechRef.current = true
+          clearAutoStopTimeout()
+        } else if (hasHeardSpeechRef.current && autoStopTimeoutRef.current === null) {
+          autoStopTimeoutRef.current = window.setTimeout(() => {
+            autoStopTimeoutRef.current = null
+            if (!mountedRef.current) return
+            void handleStop()
+          }, 1200)
+        }
 
         if (!liveSessionRef.current || !liveReadyRef.current) {
           return
@@ -363,7 +406,13 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
       setTranscript('Microphone access is needed for voice styling.')
       closeLiveSession()
     }
-  }, [beginLiveSession, closeLiveSession])
+  }, [beginLiveSession, clearAutoStopTimeout, closeLiveSession, handleStop])
+
+  useEffect(() => {
+    restartListeningRef.current = () => {
+      void startListening()
+    }
+  }, [startListening])
 
   const stopListening = useCallback(() => {
     if (voiceState !== 'listening') return
@@ -372,11 +421,12 @@ export function useVoiceCapture({ onTranscript }: UseVoiceCaptureOptions) {
 
   const cancelListening = useCallback(() => {
     shouldSubmitRef.current = false
+    clearAutoStopTimeout()
     resolveLiveTranscript()
     closeLiveSession()
     void teardownAudioGraph()
     reset()
-  }, [closeLiveSession, reset, resolveLiveTranscript, teardownAudioGraph])
+  }, [clearAutoStopTimeout, closeLiveSession, reset, resolveLiveTranscript, teardownAudioGraph])
 
   return {
     voiceState,

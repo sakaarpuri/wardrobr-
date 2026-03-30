@@ -54,7 +54,7 @@ export function ClarificationCard({ clarification, onSelect }: ClarificationCard
       {clarification.isSubmitting && (
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Tightening the brief...
+          Got it. Working on that...
         </div>
       )}
     </div>
