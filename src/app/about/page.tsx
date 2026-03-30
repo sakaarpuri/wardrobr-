@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { APP_BUILD_LABEL } from '@/lib/version'
+import { AuthStatus } from '@/components/auth/AuthStatus'
 
 export const metadata: Metadata = {
   title: 'About — Wardrobr.ai',
@@ -12,7 +13,10 @@ export default function AboutPage() {
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
       <nav className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
         <Link href="/" className="text-[var(--text)] font-semibold tracking-tight">Wardrobr.ai</Link>
-        <Link href="/" className="text-[var(--text-muted)] text-sm hover:text-[var(--text)] transition-colors">← Home</Link>
+        <div className="flex items-center gap-3">
+          <AuthStatus compact />
+          <Link href="/" className="text-[var(--text-muted)] text-sm hover:text-[var(--text)] transition-colors">← Home</Link>
+        </div>
       </nav>
 
       <main className="max-w-2xl mx-auto px-6 py-16">
@@ -29,9 +33,9 @@ export default function AboutPage() {
             Zara, New Look, and Primark in seconds.
           </p>
           <p>
-            No subscription. No signup. No algorithm trying to sell you things you don&apos;t need.
-            Just honest, taste-led recommendations from stores you already know, at prices that
-            actually make sense.
+            Guests can use the stylist instantly. Members can optionally sign in to save boards and
+            keep long-term taste memory turned on. Either way, the goal stays the same: honest,
+            taste-led recommendations from stores you already know, at prices that actually make sense.
           </p>
           <p>
             The service is powered by Google Gemini AI and covers women&apos;s and men&apos;s fashion

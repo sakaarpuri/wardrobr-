@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { APP_BUILD_LABEL } from '@/lib/version'
+import { AuthStatus } from '@/components/auth/AuthStatus'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Wardrobr.ai',
@@ -12,7 +13,10 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
       <nav className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
         <Link href="/" className="text-[var(--text)] font-semibold tracking-tight">Wardrobr.ai</Link>
-        <Link href="/" className="text-[var(--text-muted)] text-sm hover:text-[var(--text)] transition-colors">← Home</Link>
+        <div className="flex items-center gap-3">
+          <AuthStatus compact />
+          <Link href="/" className="text-[var(--text-muted)] text-sm hover:text-[var(--text)] transition-colors">← Home</Link>
+        </div>
       </nav>
 
       <main className="max-w-2xl mx-auto px-6 py-16">
@@ -37,9 +41,10 @@ export default function PrivacyPage() {
               <li><strong className="text-[var(--text)]">Style requests</strong> — the text, images, or voice input you submit to get outfit recommendations.</li>
               <li><strong className="text-[var(--text)]">Usage data</strong> — standard server logs (page views, browser type, IP address) collected automatically.</li>
               <li><strong className="text-[var(--text)]">Preferences</strong> — size, gender, and budget preferences you optionally provide within a session.</li>
+              <li><strong className="text-[var(--text)]">Member memory</strong> — for signed-in members only, we store saved boards, taste preferences, and shopping interaction history to improve future results.</li>
             </ul>
             <p className="mt-3">
-              We do <strong className="text-[var(--text)]">not</strong> require account registration. We do not collect your name or email address unless you contact us directly.
+              We do <strong className="text-[var(--text)]">not</strong> require account registration to use Wardrobr. If you choose to create a member account, we store your email address and the taste-memory data needed to support saved boards and returning personalisation.
             </p>
           </section>
 
@@ -49,6 +54,7 @@ export default function PrivacyPage() {
               <li>To generate personalised outfit recommendations via Google Gemini AI.</li>
               <li>To search for matching products via our affiliate partner network (Sovrn Commerce / Skimlinks).</li>
               <li>To improve the accuracy and quality of our styling suggestions.</li>
+              <li>For signed-in members, to remember taste preferences, saved boards, and shopping behaviour across visits.</li>
               <li>To monitor site performance and fix errors.</li>
             </ul>
           </section>
@@ -83,7 +89,8 @@ export default function PrivacyPage() {
             <h2 className="text-[var(--text)] text-base font-semibold mb-3">6. Data retention</h2>
             <p>
               Style requests and images you submit are processed in real-time and are not stored on our
-              servers beyond the duration of your session. Server logs are retained for up to 30 days.
+              servers beyond the duration of your session. For signed-in members, saved boards, preferences,
+              and taste-memory events are stored until you delete your account or ask us to erase them. Server logs are retained for up to 30 days.
             </p>
           </section>
 

@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { OutfitBoard as OutfitBoardType, Product } from '@/lib/types'
 import { ProductCard } from './ProductCard'
 import { SwapModal } from './SwapModal'
-import { ImageDown, Mail, Loader2, ShoppingBag } from 'lucide-react'
+import { Bookmark, BookmarkCheck, ImageDown, Mail, Loader2, ShoppingBag } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useChatStore } from '@/store/chatStore'
 import { track } from '@/lib/posthog'
 import { SwapActionKey, formatCurrency } from '@/lib/shopper'
+import { recordMemberEvent, saveBoardForMember } from '@/lib/member-memory-client'
 
 interface OutfitBoardProps {
   board: OutfitBoardType
@@ -32,6 +33,7 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
   const [showEmailInput, setShowEmailInput] = useState(false)
   const [email, setEmail] = useState('')
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   const handleOpenAllTabs = () => {
     const urls = board.products
@@ -89,6 +91,11 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
         document.body.append(heading, note, list)
       }
     }
+
+    void recordMemberEvent('open_all_tabs', {
+      boardId: board.id,
+      metadata: { productCount: board.products.length },
+    })
   }
 
   const handleReplace = async (product: Product, action: SwapActionKey = 'same_vibe') => {
@@ -123,6 +130,11 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
     swapBoardProduct(board.id, swapAlternatives.product.id, newProduct)
     setSwapAlternatives(null)
     track('product_swapped', { board_id: board.id, occasion: board.occasion })
+    void recordMemberEvent('product_swapped', {
+      boardId: board.id,
+      product: newProduct,
+      metadata: { replacedProductId: swapAlternatives.product.id },
+    })
   }
 
   const handleShare = async () => {
@@ -160,6 +172,10 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
       }
 
       track('board_shared', { occasion_type: board.occasion })
+      void recordMemberEvent('board_share', {
+        boardId: board.id,
+        metadata: { occasion: board.occasion ?? board.title },
+      })
     } catch (error) {
       console.error('Share error:', error)
     } finally {
@@ -185,8 +201,27 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
       if (!res.ok) throw new Error('Email failed')
       setEmailStatus('sent')
       track('board_emailed', { occasion_type: board.occasion })
+      void recordMemberEvent('board_email', {
+        boardId: board.id,
+        metadata: { occasion: board.occasion ?? board.title },
+      })
     } catch {
       setEmailStatus('error')
+    }
+  }
+
+  const handleSaveBoard = async () => {
+    setSaveStatus('saving')
+    try {
+      await saveBoardForMember(board)
+      setSaveStatus('saved')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not save board'
+      if (message.toLowerCase().includes('sign in')) {
+        window.location.href = '/auth/sign-in?next=/style'
+        return
+      }
+      setSaveStatus('error')
     }
   }
 
@@ -243,6 +278,22 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
             >
               <ShoppingBag className="h-3.5 w-3.5" />
               <span>Open results in tabs</span>
+            </button>
+
+            <button
+              onClick={handleSaveBoard}
+              disabled={saveStatus === 'saving' || saveStatus === 'saved'}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-all hover:border-[#E8A94A]/35 hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-70"
+              title="Save this board to your member account"
+            >
+              {saveStatus === 'saved' ? (
+                <BookmarkCheck className="h-3.5 w-3.5" />
+              ) : saveStatus === 'saving' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Bookmark className="h-3.5 w-3.5" />
+              )}
+              <span>{saveStatus === 'saved' ? 'Saved' : 'Save'}</span>
             </button>
 
             <button
@@ -368,7 +419,9 @@ export function OutfitBoard({ board }: OutfitBoardProps) {
         </div>
 
         {/* Watermark */}
-        <p className="text-[var(--text-faint)] text-xs text-right">Styled by Wardrobr.ai</p>
+        <p className="text-[var(--text-faint)] text-xs text-right">
+          {saveStatus === 'error' ? 'Could not save that board just now.' : 'Styled by Wardrobr.ai'}
+        </p>
       </motion.div>
 
       {/* Swap Modal */}

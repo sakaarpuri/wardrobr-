@@ -6,6 +6,7 @@ import { ChatMessage } from './ChatMessage'
 import { track } from '@/lib/posthog'
 import { ClarificationPrompt, Message, Product } from '@/lib/types'
 import { buildWorkingSummary, getBudgetLabel, getMissionTitle, getTripPreferenceTitle, inferProfileFromReply, isLikelyClarificationReply, normaliseUserProfile } from '@/lib/shopper'
+import { recordMemberEvent } from '@/lib/member-memory-client'
 
 const STARTER_REQUESTS = [
   'Trip to India in summer',
@@ -202,6 +203,14 @@ export function ChatInterface() {
               addMessage({ type: 'ai_outfit_board', outfitBoard: event.outfitBoard })
               setCurrentBoard(event.outfitBoard)
               track('board_generated', { occasion_type: event.outfitBoard.occasion })
+              void recordMemberEvent('board_generated', {
+                boardId: event.outfitBoard.id,
+                metadata: {
+                  title: event.outfitBoard.title,
+                  occasion: event.outfitBoard.occasion ?? null,
+                  totalPrice: event.outfitBoard.totalPrice ?? null,
+                },
+              })
             }
           } else if (event.type === 'error') {
             throw new Error(event.error ?? 'Unknown error')

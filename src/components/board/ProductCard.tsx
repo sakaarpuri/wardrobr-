@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Product } from '@/lib/types'
 import { ExternalLink, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { SwapActionKey, getSwapActions } from '@/lib/shopper'
+import { recordMemberEvent } from '@/lib/member-memory-client'
 
 const CATEGORY_STYLES: Record<string, { gradient: string; label: string }> = {
   tops:        { gradient: 'from-stone-800 to-stone-700',   label: 'Top' },
@@ -137,7 +138,13 @@ export function ProductCard({ product, onReplace, isSwapping }: ProductCardProps
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 rounded-md bg-[#E8A94A] px-2.5 py-1.5 text-[11px] font-semibold text-[#1A0E00] transition-colors hover:bg-[#f0b85a] sm:px-2 sm:py-1 sm:text-[10px]"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              void recordMemberEvent('shop_click', {
+                product,
+                metadata: { source: 'product_card' },
+              })
+            }}
           >
             Shop
             <ExternalLink className="w-2.5 h-2.5" />

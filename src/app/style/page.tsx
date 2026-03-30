@@ -7,13 +7,17 @@ import { ChevronDown, Trash2 } from 'lucide-react'
 import { ChatInterface } from '@/components/chat/ChatInterface'
 import { VoiceStyler } from '@/components/voice/VoiceStyler'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { AuthStatus } from '@/components/auth/AuthStatus'
 import { useChatStore } from '@/store/chatStore'
 import { BUDGET_OPTIONS, SHOPPING_FOR_OPTIONS, getSizeOptions, isSizeCompatibleWithGender } from '@/lib/shopper'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
+import { applyMemberPreferencesToProfile, type MemberPreferences } from '@/lib/member-memory'
 
 export default function StylePage() {
   const { clearChat, isLoading, messages, pendingMessage, pendingVoiceStart, setPendingVoiceStart, userProfile, setUserProfile } = useChatStore()
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
+  const [memberLoaded, setMemberLoaded] = useState(false)
+  const [hasMemberMemory, setHasMemberMemory] = useState(false)
   const hasShoppableResults = messages.some((message) =>
     message.type === 'ai_product_stream' ||
     message.type === 'ai_outfit_board'
@@ -30,6 +34,39 @@ export default function StylePage() {
     return () => mediaQuery.removeEventListener('change', sync)
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+
+    const loadMemberDefaults = async () => {
+      try {
+        const response = await fetch('/api/member/preferences')
+        const payload = await response.json().catch(() => null)
+
+        if (!payload?.member || !payload.preferences) {
+          if (!cancelled) setMemberLoaded(true)
+          return
+        }
+
+        if (!cancelled) setHasMemberMemory(true)
+
+        const patch = applyMemberPreferencesToProfile(useChatStore.getState().userProfile, payload.preferences as MemberPreferences)
+        if (Object.keys(patch).length > 0) {
+          setUserProfile(patch)
+        }
+      } catch {
+        // Member defaults are additive only.
+      } finally {
+        if (!cancelled) setMemberLoaded(true)
+      }
+    }
+
+    void loadMemberDefaults()
+
+    return () => {
+      cancelled = true
+    }
+  }, [setUserProfile])
+
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,215,255,0.10),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(232,169,74,0.08),transparent_26%)]" />
@@ -39,6 +76,7 @@ export default function StylePage() {
           Wardrobr.ai
         </Link>
         <div className="flex items-center gap-2">
+          <AuthStatus compact />
           <ThemeToggle />
           {messages.length > 0 && (
             <button
@@ -64,6 +102,8 @@ export default function StylePage() {
                 userProfile={userProfile}
                 setUserProfile={setUserProfile}
                 sizeOptions={sizeOptions}
+                hasMemberMemory={hasMemberMemory}
+                memberLoaded={memberLoaded}
               />
               <StarterBoardsPanel />
             </aside>
@@ -97,6 +137,8 @@ export default function StylePage() {
                   userProfile={userProfile}
                   setUserProfile={setUserProfile}
                   sizeOptions={sizeOptions}
+                  hasMemberMemory={hasMemberMemory}
+                  memberLoaded={memberLoaded}
                   compact
                 />
               </MobileAccordion>
@@ -127,15 +169,24 @@ interface OptionalDetailsPanelProps {
   userProfile: UserProfileValue
   setUserProfile: (patch: Partial<UserProfileValue>) => void
   sizeOptions: string[]
+  hasMemberMemory: boolean
+  memberLoaded: boolean
   compact?: boolean
 }
 
-function OptionalDetailsPanel({ userProfile, setUserProfile, sizeOptions, compact = false }: OptionalDetailsPanelProps) {
+function OptionalDetailsPanel({ userProfile, setUserProfile, sizeOptions, hasMemberMemory, memberLoaded, compact = false }: OptionalDetailsPanelProps) {
   return (
     <section className={`rounded-[28px] border border-[var(--border)] bg-[var(--bg-card)]/85 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm ${compact ? 'p-4' : 'p-5'}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className={`mt-2 font-semibold text-[var(--text)] ${compact ? 'text-base' : 'text-lg'}`}>Add a few details</h2>
+          <p className="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">
+            {hasMemberMemory
+              ? 'Your member defaults are already folded in here.'
+              : memberLoaded
+              ? 'Members can save these as long-term defaults.'
+              : 'Checking member defaults...'}
+          </p>
         </div>
       </div>
 

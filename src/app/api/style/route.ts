@@ -5,6 +5,9 @@ import { SearchProviderUnavailableError, searchProducts, rewriteAffiliateUrl } f
 import { routeRequest } from '@/lib/gemini-router'
 import { ClarificationGroup, ClarificationPrompt, Product, OutfitBoard } from '@/lib/types'
 import { UserProfile, buildProfileContext, getBudgetCap, getBudgetLabel, getBudgetStatus, getSearchPriceCap, inferProfileFromReply, isLikelyShoppingRelevant, isUnsupportedShopperSegment, normaliseUserProfile } from '@/lib/shopper'
+import { buildMemberMemoryContext, getMemberMemorySnapshot } from '@/lib/member-memory'
+import { createClient as createSupabaseClient } from '@/lib/supabase/server'
+import { isSupabaseConfigured } from '@/lib/supabase/config'
 import crypto from 'crypto'
 
 // Allow up to 60s on Vercel (Pro) — Gemini agentic loop can take 15-25s
@@ -129,6 +132,17 @@ export async function POST(req: NextRequest) {
     ...normaliseUserProfile(rawProfile),
     ...inferProfileFromReply(message ?? '', normaliseUserProfile(rawProfile), lastAssistantText),
   }
+  let memberMemoryContext = ''
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createSupabaseClient()
+      const snapshot = await getMemberMemorySnapshot(supabase)
+      memberMemoryContext = buildMemberMemoryContext(snapshot)
+    } catch {
+      memberMemoryContext = ''
+    }
+  }
 
   // ── SSE stream ─────────────────────────────────────────────────────────────
   const stream = new ReadableStream({
@@ -181,7 +195,7 @@ export async function POST(req: NextRequest) {
         const messageParts: Part[] = []
         if (imagePart) messageParts.push(imagePart)
         const shopperContext = buildProfileContext(profile)
-        const textWithContext = [shopperContext, route.imageContextHint, message].filter(Boolean).join('\n')
+        const textWithContext = [shopperContext, memberMemoryContext, route.imageContextHint, message].filter(Boolean).join('\n')
         if (textWithContext) messageParts.push({ text: textWithContext })
 
         emit({ type: 'status', text: 'Thinking about your look…' })

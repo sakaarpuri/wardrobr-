@@ -8,6 +8,7 @@ import Script from 'next/script'
 import { Camera, Mic, Send, Sparkles, Wand2 } from 'lucide-react'
 import { useChatStore } from '@/store/chatStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { AuthStatus } from '@/components/auth/AuthStatus'
 import { EXAMPLE_BOARDS } from '@/lib/exampleBoards'
 import { APP_BUILD_LABEL } from '@/lib/version'
 
@@ -391,7 +392,10 @@ export default function HomePage() {
           <span className="block text-xl font-semibold tracking-tight text-[var(--text)] sm:text-2xl">Wardrobr.ai</span>
           <span className="mt-1 block text-[10px] uppercase tracking-[0.32em] text-[var(--text-faint)]">Sorted</span>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <AuthStatus />
+          <ThemeToggle />
+        </div>
       </nav>
 
       <main className="relative px-6 pt-14 pb-10 text-center sm:pt-18">
@@ -433,7 +437,7 @@ export default function HomePage() {
               Tell me what you&apos;re dressing for and I&apos;ll find a full shoppable outfit in seconds.
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-[var(--text-muted)] sm:text-base">
-              Free · No signup · Real products from ASOS, H&amp;M, Zara &amp; more
+              Start free · Member taste memory when you join · Real products from ASOS, H&amp;M, Zara &amp; more
             </p>
           </div>
 
